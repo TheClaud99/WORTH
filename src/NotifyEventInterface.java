@@ -1,5 +1,3 @@
-package RMI;
-
 import java.rmi.*;
 
 public interface NotifyEventInterface extends Remote {

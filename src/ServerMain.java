@@ -1,10 +1,10 @@
-package RMI;
-
 import java.rmi.*;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.rmi.server.*;
 import java.util.*;
 
-public class ServerImpl extends RemoteObject implements ServerInterface { /* lista dei client registrati */
+public class ServerMain extends RemoteObject implements ServerInterface {
     /**
      *
      */
@@ -12,7 +12,7 @@ public class ServerImpl extends RemoteObject implements ServerInterface { /* lis
     private List<NotifyEventInterface> clients;
 
     /* crea un nuovo servente */
-    public ServerImpl() throws RemoteException {
+    public ServerMain() throws RemoteException {
         super();
         clients = new ArrayList<>();
     }
@@ -43,10 +43,28 @@ public class ServerImpl extends RemoteObject implements ServerInterface { /* lis
 
     private synchronized void doCallbacks(int value) throws RemoteException {
         System.out.println("Starting callbacks.");
-        // int numeroClienti = clients.size( );
         for (NotifyEventInterface client : clients) {
             client.notifyEvent(value);
         }
         System.out.println("Callbacks complete.");
+    }
+
+    public static void main(String[] args) {
+        try {
+            ServerMain serverMain = new ServerMain();
+            ServerInterface stub = (ServerInterface) UnicastRemoteObject.exportObject(serverMain, 39000);
+            String name = "Server";
+            LocateRegistry.createRegistry(5000);
+            Registry registry = LocateRegistry.getRegistry(5000);
+            registry.bind(name, stub);
+            while (true) {
+                int val = (int) (Math.random() * 1000);
+                System.out.println("nuovo update" + val);
+                serverMain.update(val);
+                Thread.sleep(1500);
+            }
+        } catch (Exception e) {
+            System.out.println("Eccezione" + e);
+        }
     }
 }
