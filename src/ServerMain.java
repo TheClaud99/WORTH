@@ -33,6 +33,11 @@ public class ServerMain extends RemoteObject implements ServerInterface {
         }
     }
 
+    @Override
+    public void register(String username, String password) throws RemoteException {
+        System.out.printf("Username: %s \n Password: %s \n", username, password);
+    }
+
     /*
      * notifica di una variazione di valore dell'azione /* quando viene richiamato,
      * fa il callback a tutti i client registrati
@@ -57,12 +62,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
             LocateRegistry.createRegistry(5000);
             Registry registry = LocateRegistry.getRegistry(5000);
             registry.bind(name, stub);
-            while (true) {
-                int val = (int) (Math.random() * 1000);
-                System.out.println("nuovo update" + val);
-                serverMain.update(val);
-                Thread.sleep(1500);
-            }
         } catch (Exception e) {
             System.out.println("Eccezione" + e);
         }
