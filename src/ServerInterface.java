@@ -1,3 +1,5 @@
+import Utils.Response;
+
 import java.rmi.*;
 
 public interface ServerInterface extends Remote {
@@ -7,5 +9,5 @@ public interface ServerInterface extends Remote {
     /* cancella registrazione per la callback */
     void unregisterForCallback(NotifyEventInterface ClientInterface) throws RemoteException;
 
-    void register(String username, String password) throws RemoteException;
+    Response register(String username, String password) throws RemoteException;
 }

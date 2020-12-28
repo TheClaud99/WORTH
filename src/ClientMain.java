@@ -1,15 +1,19 @@
+import Utils.Response;
+
 import java.rmi.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.*;
 
-public class ClientMain extends RemoteObject implements NotifyEventInterface {
+public class ClientMain extends UnicastRemoteObject implements NotifyEventInterface {
     /**
      *
      */
     private static final long serialVersionUID = 5466266430079395311L;
 
     private final ServerInterface server;
+    private String username;
+    private String password;
 
     /* crea un nuovo callback client */
     public ClientMain(ServerInterface server) throws RemoteException {
@@ -26,8 +30,17 @@ public class ClientMain extends RemoteObject implements NotifyEventInterface {
         System.out.println(returnMessage);
     }
 
-    public void register(String username, String password) throws RemoteException {
-        server.register(username, password);
+    public Response register(String username, String password) throws RemoteException {
+        Response response = server.register(username, password);
+        login(username, password);
+        return response;
+    }
+
+    public void login(String username, String password) throws RemoteException {
+        this.username = username;
+        this.password = password;
+        // NotifyEventInterface stub = (NotifyEventInterface) UnicastRemoteObject.exportObject(this, 0);
+        server.registerForCallback(this);
     }
 
     public void close() {
@@ -48,8 +61,6 @@ public class ClientMain extends RemoteObject implements NotifyEventInterface {
             ServerInterface server = (ServerInterface) registry.lookup(name);
             clientMain = new ClientMain(server);
             form = new RegisterForm(clientMain);
-            NotifyEventInterface stub = (NotifyEventInterface) UnicastRemoteObject.exportObject(clientMain, 0);
-            server.registerForCallback(stub);
             form.setVisible(true);
         } catch (Exception e) {
             System.err.println("Client exception:" + e.getMessage());

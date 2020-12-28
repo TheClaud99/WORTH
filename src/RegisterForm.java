@@ -1,3 +1,5 @@
+import Utils.Response;
+
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -19,7 +21,8 @@ public class RegisterForm extends JFrame {
 
         registerButton.addActionListener(e -> {
             try {
-                client.register(username.getText(), String.valueOf(passwordField.getPassword()));
+                Response r = client.register(username.getText(), String.valueOf(passwordField.getPassword()));
+                JOptionPane.showMessageDialog(null, r.message);
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(null, e.toString());
                 ex.printStackTrace();
@@ -32,6 +35,6 @@ public class RegisterForm extends JFrame {
     @Override
     public void dispose() {
         super.dispose();
-        client.close();
+//        client.close();
     }
 }
