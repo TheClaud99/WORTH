@@ -59,4 +59,38 @@ public class Users {
 
         return false;
     }
+
+    public boolean isLogged(SelectionKey userKey) {
+        return userKeys.containsKey(userKey);
+    }
+
+    public String[] getUsersList() {
+        String[] usersList = new String[users.size()];
+        for (int i = 0; i < users.size(); i++) {
+            User user = users.get(i);
+            if(user.isOnline())
+                usersList[i] = user.getUsername() + ": online";
+            else
+                usersList[i] = user.getUsername() + ": offline";
+        }
+
+        return usersList;
+    }
+
+    public String[] getOnlineUsersList() {
+        String[] usersList = new String[userKeys.size()];
+        for (int i = 0; i < users.size(); i++) {
+            User user = users.get(i);
+            if(user.isOnline())
+                usersList[i] = user.getUsername();
+        }
+
+        return usersList;
+    }
+
+    public void logout(SelectionKey key) {
+        User user = userKeys.get(key);
+        user.setOnline(false);
+        userKeys.remove(key);
+    }
 }

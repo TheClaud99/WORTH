@@ -98,6 +98,12 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
                 System.out.printf("Client: il server ha inviato %s\n", response.message);
                 reply.clear();
 
+                if(msg.equals("listusers") || msg.equals("listonlineusers")) {
+                    for(String user : response.list) {
+                        System.out.println(user);
+                    }
+                }
+
             }
             System.out.println("Client: chiusura");
         } catch (IOException | ClassNotFoundException e) {

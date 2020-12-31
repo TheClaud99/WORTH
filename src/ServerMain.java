@@ -199,9 +199,17 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                 break;
 
             case "listusers":
+                if(users.isLogged(key))
+                    key.attach(new Response(true, "Lista utenti:", users.getUsersList()));
+                else
+                    key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "listonlineusers":
+                if(users.isLogged(key))
+                    key.attach(new Response(true, "Lista utenti:", users.getOnlineUsersList()));
+                else
+                    key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "listprojects":
@@ -289,6 +297,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
         System.out.printf("Server: ricevuto %s\n", msg);
         if (msg.equals(this.EXIT_CMD)) {
             System.out.println("Server: chiusa la connessione con il client " + c_channel.getRemoteAddress());
+            users.logout(key);
             c_channel.close();
             key.cancel();
         }

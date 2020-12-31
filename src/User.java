@@ -31,6 +31,16 @@ public class User {
         return false;
     }
 
+    @JsonIgnore
+    public boolean isOnline() {
+        return online;
+    }
+
+    @JsonIgnore
+    public void setOnline(boolean online) {
+        this.online = online;
+    }
+
     public String getUsername() {
         return username;
     }
