@@ -1,9 +1,12 @@
 import Utils.Response;
+import Utils.Utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -35,7 +38,8 @@ public class ServerMain extends RemoteObject implements ServerInterface {
     /**
      * porta su cui aprire il listening socket
      */
-    private final int port = 1919;
+    private static final int RMIport = 5000; //RMI port
+    private static final int TCPport = 1919; //TCP port for connection
     /**
      * messaggio di risposta
      */
@@ -97,8 +101,8 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
         try {
             boolean succsess = users.register(username, password);
-            if(succsess) {
-                return  new Response(true, "Registrazione avvenuta con successo");
+            if (succsess) {
+                return new Response(true, "Registrazione avvenuta con successo");
             } else {
                 return new Response(false, "Utente già presente");
             }
@@ -129,44 +133,120 @@ public class ServerMain extends RemoteObject implements ServerInterface {
      */
     public void start() {
         this.numberActiveConnections = 0;
-        try (ServerSocketChannel s_channel = ServerSocketChannel.open();) {
-            s_channel.socket().bind(new InetSocketAddress(this.port));
+        try (ServerSocketChannel s_channel = ServerSocketChannel.open()) {
+            s_channel.socket().bind(new InetSocketAddress(TCPport));
             s_channel.configureBlocking(false);
             Selector sel = Selector.open();
             s_channel.register(sel, SelectionKey.OP_ACCEPT);
-            System.out.printf("Server: in attessa di connessioni sulla porta %d\n", this.port);
+            System.out.printf("Server: in attessa di connessioni sulla porta %d\n", TCPport);
             while (true) {
-                if (sel.select() == 0)
-                    continue;
-                // insieme delle chiavi corrispondenti a canali pronti
-                Set<SelectionKey> selectedKeys = sel.selectedKeys();
-                // iteratore dell'insieme sopra definito
-                Iterator<SelectionKey> iter = selectedKeys.iterator();
-                while (iter.hasNext()) {
-                    SelectionKey key = iter.next();
-                    iter.remove();
-                    if (key.isAcceptable()) { // ACCETTABLE
-                        /*
-                         * accetta una nuova connessione creando un SocketChannel per la comunicazione
-                         * con il client che la richiede
-                         */
-                        ServerSocketChannel server = (ServerSocketChannel) key.channel();
-                        SocketChannel c_channel = server.accept();
-                        c_channel.configureBlocking(false);
-                        System.out.println(
-                                "Server: accettata nuova connessione dal client: " + c_channel.getRemoteAddress());
-                        System.out.printf("Server: numero di connessioni aperte: %d\n", ++this.numberActiveConnections);
-                        this.registerRead(sel, c_channel);
-                    } else if (key.isReadable()) { // READABLE
-                        this.readClientMessage(sel, key);
-                    } else if (key.isWritable()) { // WRITABLE
-                        this.echoAnswer(sel, key);
-                    }
-
-                }
+                iterateKeys(sel);
             }
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void iterateKeys(Selector sel) throws IOException {
+        if (sel.select() == 0)
+            return;
+
+        // insieme delle chiavi corrispondenti a canali pronti
+        Set<SelectionKey> selectedKeys = sel.selectedKeys();
+        // iteratore dell'insieme sopra definito
+        Iterator<SelectionKey> iter = selectedKeys.iterator();
+        while (iter.hasNext()) {
+            SelectionKey key = iter.next();
+            iter.remove();
+            if (key.isAcceptable()) { // ACCETTABLE
+                /*
+                 * accetta una nuova connessione creando un SocketChannel per la comunicazione
+                 * con il client che la richiede
+                 */
+                ServerSocketChannel server = (ServerSocketChannel) key.channel();
+                SocketChannel c_channel = server.accept();
+                c_channel.configureBlocking(false);
+                System.out.println(
+                        "Server: accettata nuova connessione dal client: " + c_channel.getRemoteAddress());
+                System.out.printf("Server: numero di connessioni aperte: %d\n", ++this.numberActiveConnections);
+                this.registerRead(sel, c_channel);
+            } else if (key.isReadable()) { // READABLE
+                String command = this.readClientMessage(sel, key);
+                executeCommand(command, key);
+                key.interestOps(SelectionKey.OP_WRITE);
+            } else if (key.isWritable()) { // WRITABLE
+                this.answerClient(sel, key);
+            }
+        }
+    }
+
+    private void executeCommand(String command, SelectionKey key) {
+        String[] splittedCommand = command.split(" ");
+        System.out.println("Command requested: " + command);
+        switch (splittedCommand[0].toLowerCase()) {
+            case "login":
+                try {
+                    boolean success = users.login(splittedCommand[1], splittedCommand[2], key);
+                    if (success) {
+                        key.attach(new Response(true, "Login avvenuto con successo"));
+                    } else {
+                        key.attach(new Response(false, "Password non corretta"));
+                    }
+                } catch (UserNotFoundException e) {
+                    key.attach(new Response(false, "Utente non trovato"));
+                }
+            case "logout":
+                break;
+
+            case "listusers":
+                break;
+
+            case "listonlineusers":
+                break;
+
+            case "listprojects":
+                break;
+
+            case "createproject":
+                break;
+
+            case "addmember":
+                break;
+
+            case "showmembers":
+                break;
+
+            case "showcards":
+                break;
+
+            case "showcard":
+                break;
+
+            case "addcard":
+                break;
+
+
+            case "movecard":
+                break;
+
+            case "getcardhistory":
+                break;
+
+            case "cancelproject":
+                break;
+
+            case "readchat":
+                break;
+
+            case "sendchatmsg":
+                break;
+
+            case "":
+            case "exit":
+                break;
+
+            default:
+                break;
         }
     }
 
@@ -180,12 +260,10 @@ public class ServerMain extends RemoteObject implements ServerInterface {
     private void registerRead(Selector sel, SocketChannel c_channel) throws IOException {
 
         // crea il buffer
-        ByteBuffer length = ByteBuffer.allocate(Integer.BYTES);
-        ByteBuffer message = ByteBuffer.allocate(BUFFER_DIMENSION);
-        ByteBuffer[] bfs = {length, message};
+        ByteBuffer buffer = ByteBuffer.allocate(BUFFER_DIMENSION);
         // aggiunge il canale del client al selector con l'operazione OP_READ
         // e aggiunge l'array di bytebuffer [length, message] come attachment
-        c_channel.register(sel, SelectionKey.OP_READ, bfs);
+        c_channel.register(sel, SelectionKey.OP_READ, buffer);
     }
 
     /**
@@ -196,37 +274,26 @@ public class ServerMain extends RemoteObject implements ServerInterface {
      * @param key chiave di selezione
      * @throws IOException se si verifica un errore di I/O
      */
-    private void readClientMessage(Selector sel, SelectionKey key) throws IOException {
+    private String readClientMessage(Selector sel, SelectionKey key) throws IOException {
         /*
          * accetta una nuova connessione creando un SocketChannel per la comunicazione
          * con il client che la richiede
          */
         SocketChannel c_channel = (SocketChannel) key.channel();
         // recupera l'array di bytebuffer (attachment)
-        ByteBuffer[] bfs = (ByteBuffer[]) key.attachment();
+        ByteBuffer bfs = (ByteBuffer) key.attachment();
         c_channel.read(bfs);
-        if (!bfs[0].hasRemaining()) {
-            bfs[0].flip();
-            int l = bfs[0].getInt();
 
-            if (bfs[1].position() == l) {
-                bfs[1].flip();
-                String msg = new String(bfs[1].array()).trim();
-                System.out.printf("Server: ricevuto %s\n", msg);
-                if (msg.equals(this.EXIT_CMD)) {
-                    System.out.println("Server: chiusa la connessione con il client " + c_channel.getRemoteAddress());
-                    c_channel.close();
-                    key.cancel();
-                } else {
-                    /*
-                     * aggiunge il canale del client al selector con l'operazione OP_WRITE e
-                     * aggiunge il messaggio ricevuto come attachment (aggiungendo la risposta
-                     * addizionale)
-                     */
-                    c_channel.register(sel, SelectionKey.OP_WRITE, msg + " " + this.ADD_ANSWER);
-                }
-            }
+        bfs.flip();
+        String msg = new String(bfs.array()).trim();
+        System.out.printf("Server: ricevuto %s\n", msg);
+        if (msg.equals(this.EXIT_CMD)) {
+            System.out.println("Server: chiusa la connessione con il client " + c_channel.getRemoteAddress());
+            c_channel.close();
+            key.cancel();
         }
+
+        return msg;
     }
 
     /**
@@ -235,12 +302,13 @@ public class ServerMain extends RemoteObject implements ServerInterface {
      * @param key chiave di selezione
      * @throws IOException se si verifica un errore di I/O
      */
-    private void echoAnswer(Selector sel, SelectionKey key) throws IOException {
+    private void answerClient(Selector sel, SelectionKey key) throws IOException {
         SocketChannel c_channel = (SocketChannel) key.channel();
-        String echoAnsw = (String) key.attachment();
-        ByteBuffer bbEchoAnsw = ByteBuffer.wrap(echoAnsw.getBytes());
+        Response response = (Response) key.attachment();
+        byte[] res = Utils.serialize(response);
+        ByteBuffer bbEchoAnsw = ByteBuffer.wrap(res);
         c_channel.write(bbEchoAnsw);
-        System.out.println("Server: " + echoAnsw + " inviato al client " + c_channel.getRemoteAddress());
+        System.out.println("Server: " + response.message + " inviato al client " + c_channel.getRemoteAddress());
         if (!bbEchoAnsw.hasRemaining()) {
             bbEchoAnsw.clear();
             this.registerRead(sel, c_channel);
@@ -250,11 +318,12 @@ public class ServerMain extends RemoteObject implements ServerInterface {
     public static void main(String[] args) {
         try {
             ServerMain serverMain = new ServerMain();
-            ServerInterface stub = (ServerInterface) UnicastRemoteObject.exportObject(serverMain, 39001);
+            ServerInterface stub = (ServerInterface) UnicastRemoteObject.exportObject(serverMain, 39000);
             String name = "Server";
-            LocateRegistry.createRegistry(5000);
-            Registry registry = LocateRegistry.getRegistry(5000);
+            LocateRegistry.createRegistry(RMIport);
+            Registry registry = LocateRegistry.getRegistry(RMIport);
             registry.bind(name, stub);
+            serverMain.start();
         } catch (Exception e) {
             System.out.println("Eccezione" + e);
         }
