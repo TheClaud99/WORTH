@@ -22,7 +22,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
      */
     private static final long serialVersionUID = 150859790584022983L;
     private List<NotifyEventInterface> clients;
-    private ArrayList<User> users;
+    private Users users;
 
     /**
      * dimensione del buffer utilizzato per la lettura
@@ -58,26 +58,21 @@ public class ServerMain extends RemoteObject implements ServerInterface {
     private StorageManager storage;
 
     /* crea un nuovo servente */
-    public ServerMain() throws RemoteException {
+    public ServerMain() throws IOException {
         super();
         clients = new ArrayList<>();
-        users = new ArrayList<>();
         mapper = new ObjectMapper();
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
         storage = new StorageManager(storageDir, usersFilePath, cardFile);
+        users = new Users(storage);
         restore();
     }
 
-    private void updateUsers() throws IOException {
-        storage.updateUsers(users);
-    }
-
     public void restore() {
-        try {
-            this.users = storage.restoreUsers();
+        /*try {
         } catch (IOException e) {
             e.printStackTrace();
-        }
+        }*/
     }
 
     public synchronized void registerForCallback(NotifyEventInterface ClientInterface) throws RemoteException {
@@ -99,21 +94,18 @@ public class ServerMain extends RemoteObject implements ServerInterface {
     @Override
     public Response register(String username, String password) throws RemoteException {
         System.out.printf("Username: %s \n Password: %s \n", username, password);
-        for(User user : users) {
-            if(user.getUsername().equals(username)) {
-                return new Response(false, "Nome utente gia' esistente");
-            }
-        }
 
-        users.add(new User(username, password));
         try {
-            updateUsers();
+            boolean succsess = users.register(username, password);
+            if(succsess) {
+                return  new Response(true, "Registrazione avvenuta con successo");
+            } else {
+                return new Response(false, "Utente già presente");
+            }
         } catch (IOException e) {
             e.printStackTrace();
             return new Response(false, e.toString());
         }
-
-        return new Response(true, "Registrazione avvenuta con successo");
     }
 
     /*
