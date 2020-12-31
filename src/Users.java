@@ -52,7 +52,7 @@ public class Users {
 
     public boolean login(String username, String password, SelectionKey userKey) throws UserNotFoundException {
         User user = getByUsername(username);
-        if(user.getPassword().equals(password)) {
+        if (user.login(password)) {
             userKeys.put(userKey, user);
             return true;
         }

@@ -35,6 +35,6 @@ public class RegisterForm extends JFrame {
     @Override
     public void dispose() {
         super.dispose();
-//        client.close();
+        client.close();
     }
 }
