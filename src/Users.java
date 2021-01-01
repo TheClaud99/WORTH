@@ -89,6 +89,9 @@ public class Users {
     }
 
     public void logout(SelectionKey key) {
+        if(!userKeys.containsKey(key))
+            return;
+
         User user = userKeys.get(key);
         user.setOnline(false);
         userKeys.remove(key);

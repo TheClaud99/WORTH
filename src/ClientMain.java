@@ -80,16 +80,16 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
 
                 String msg = consoleReader.readLine().trim();
 
-                if (msg.equals(this.EXIT_CMD)) {
-                    this.exit = true;
-                    continue;
-                }
-
                 // Creo il messaggio da inviare al server
                 ByteBuffer readBuffer = ByteBuffer.wrap(msg.getBytes());
 
                 client.write(readBuffer);
                 readBuffer.clear();
+
+                if (msg.equals(this.EXIT_CMD)) {
+                    this.exit = true;
+                    continue;
+                }
 
                 ByteBuffer reply = ByteBuffer.allocate(BUFFER_DIMENSION);
                 client.read(reply);
@@ -98,10 +98,17 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
                 System.out.printf("Risposta server: %s\n", response.message);
                 reply.clear();
 
-                if(response.success) {
-                    if(msg.equalsIgnoreCase("listusers") || msg.equalsIgnoreCase("listonlineusers") || msg.equalsIgnoreCase("listprojects")) {
-                        for(String user : response.list) {
-                            System.out.println(user);
+                String command = msg.split(" ")[0];
+
+                if (response.success) {
+                    if (command.equalsIgnoreCase("listusers") || command.equalsIgnoreCase("listonlineusers")
+                            || command.equalsIgnoreCase("listprojects")
+                            || command.equalsIgnoreCase("showmembers")
+                            || command.equalsIgnoreCase("showcards")
+                            || command.equalsIgnoreCase("showcard")
+                            || command.equalsIgnoreCase("getcardhistory")) {
+                        for (String text : response.list) {
+                            System.out.println(text);
                         }
                     }
                 }
@@ -109,6 +116,7 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
 
             }
             System.out.println("Client: chiusura");
+            close();
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
@@ -122,11 +130,11 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
             String name = "Server";
             ServerInterface server = (ServerInterface) registry.lookup(name);
             clientMain = new ClientMain(server);
-            form = new RegisterForm(clientMain);
-            form.setVisible(true);
+            // form = new RegisterForm(clientMain);
+            // form.setVisible(true);
             clientMain.start();
         } catch (Exception e) {
-            System.err.println("Client exception:" + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

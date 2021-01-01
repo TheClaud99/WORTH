@@ -1,16 +1,8 @@
 import Exceptions.CardNotFoundException;
 import Exceptions.IllegalMoveException;
-import com.fasterxml.jackson.core.JsonGenerationException;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
 public class Project {
 
@@ -47,7 +39,6 @@ public class Project {
     public void addMember(String user) {
         if (this.members.contains(user))
             throw new IllegalArgumentException();
-        System.out.println(user);
         members.add(user);
     }
 

@@ -176,16 +176,24 @@ public class ServerMain extends RemoteObject implements ServerInterface {
             } else if (key.isReadable()) { // READABLE
                 String command = this.readClientMessage(sel, key);
                 executeCommand(command, key);
-                key.interestOps(SelectionKey.OP_WRITE);
+                if (!command.equals(this.EXIT_CMD)) key.interestOps(SelectionKey.OP_WRITE);
             } else if (key.isWritable()) { // WRITABLE
                 this.answerClient(sel, key);
             }
         }
     }
 
-    private void executeCommand(String command, SelectionKey key) {
+    private void executeCommand(String command, SelectionKey key) throws IOException {
         String[] splittedCommand = command.split(" ");
         System.out.println("Command requested: " + command);
+
+        if (command.equals(this.EXIT_CMD)) {
+            users.logout(key);
+            key.channel().close();
+            key.cancel();
+            return;
+        }
+
         switch (splittedCommand[0].toLowerCase()) {
             case "login":
                 try {
@@ -262,7 +270,10 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                         if (!project.isMember(users.getUsernameByKey(key))) {
                             key.attach(new Response(false, "Non sei membro del progetto"));
                         } else {
-                            key.attach(new Response(true, "Membri: \n", (String[]) project.getMembers().toArray()));
+                            String[] members = project.getMembers().toArray(new String[0]);
+                            for(String member : members)
+                                System.out.println(member);
+                            key.attach(new Response(true, "Membri:", members));
                         }
                     } catch (ProjectNotFoundException e) {
                         key.attach(new Response(false, "Progetto non trovato"));
@@ -278,7 +289,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                         if (!project.isMember(users.getUsernameByKey(key))) {
                             key.attach(new Response(false, "Non sei membro del progetto"));
                         } else {
-                            key.attach(new Response(true, "Membri: \n", (String[]) project.getCards().toArray()));
+                            key.attach(new Response(true, "Membri: \n", project.getCardsList().toArray(new String[0])));
                         }
                     } catch (ProjectNotFoundException e) {
                         key.attach(new Response(false, "Progetto non trovato"));
@@ -294,7 +305,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                         if (!project.isMember(users.getUsernameByKey(key))) {
                             key.attach(new Response(false, "Non sei membro del progetto"));
                         } else {
-                            key.attach(new Response(true, "Membri: \n", (String[]) project.getCardInfo(splittedCommand[2]).toArray()));
+                            key.attach(new Response(true, "Info card: \n", project.getCardInfo(splittedCommand[2]).toArray(new String[0])));
                         }
                     } catch (ProjectNotFoundException e) {
                         key.attach(new Response(false, "Progetto non trovato"));
@@ -357,7 +368,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                         if (!project.isMember(users.getUsernameByKey(key))) {
                             key.attach(new Response(false, "Non sei membro del progetto"));
                         } else {
-                            key.attach(new Response(true, "Cronologia card: \n", (String[]) project.getCardHistory(splittedCommand[2]).toArray()));
+                            key.attach(new Response(true, "Cronologia card: \n", project.getCardHistory(splittedCommand[2]).toArray(new String[0])));
                         }
                     } catch (ProjectNotFoundException e) {
                         key.attach(new Response(false, "Progetto non trovato"));
@@ -440,12 +451,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
         bfs.flip();
         String msg = new String(bfs.array()).trim();
         System.out.printf("Server: ricevuto %s\n", msg);
-        if (msg.equals(this.EXIT_CMD)) {
-            System.out.println("Server: chiusa la connessione con il client " + c_channel.getRemoteAddress());
-            users.logout(key);
-            c_channel.close();
-            key.cancel();
-        }
 
         return msg;
     }

@@ -48,7 +48,7 @@ public class StorageManager {
                 Project project = new Project(projectDir.getName());
                 for (File cardFile : projectDir.listFiles()) {
                     if (cardFile.getName().equals(membersFileName)) {
-                        project.setMembers(Arrays.asList(mapper.readValue(cardFile, String[].class)));
+                        project.setMembers(new ArrayList<>(Arrays.asList(mapper.readValue(cardFile, String[].class))));
                         continue;
                     }
                     project.addCard(mapper.readValue(cardFile, Card.class));
