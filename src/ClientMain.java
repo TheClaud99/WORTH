@@ -95,14 +95,17 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
                 client.read(reply);
                 reply.flip();
                 Response response = (Response) Utils.deserialize(reply.array());
-                System.out.printf("Client: il server ha inviato %s\n", response.message);
+                System.out.printf("Risposta server: %s\n", response.message);
                 reply.clear();
 
-                if(msg.equals("listusers") || msg.equals("listonlineusers")) {
-                    for(String user : response.list) {
-                        System.out.println(user);
+                if(response.success) {
+                    if(msg.equalsIgnoreCase("listusers") || msg.equalsIgnoreCase("listonlineusers") || msg.equalsIgnoreCase("listprojects")) {
+                        for(String user : response.list) {
+                            System.out.println(user);
+                        }
                     }
                 }
+
 
             }
             System.out.println("Client: chiusura");

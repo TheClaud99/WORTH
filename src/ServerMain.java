@@ -1,12 +1,13 @@
+import Exceptions.CardNotFoundException;
+import Exceptions.IllegalMoveException;
+import Exceptions.ProjectNotFoundException;
+import Exceptions.UserNotFoundException;
 import Utils.Response;
 import Utils.Utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -26,6 +27,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
     private static final long serialVersionUID = 150859790584022983L;
     private List<NotifyEventInterface> clients;
     private Users users;
+    private Projects projects;
 
     /**
      * dimensione del buffer utilizzato per la lettura
@@ -67,8 +69,9 @@ public class ServerMain extends RemoteObject implements ServerInterface {
         clients = new ArrayList<>();
         mapper = new ObjectMapper();
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        storage = new StorageManager(storageDir, usersFilePath, cardFile);
+        storage = new StorageManager(storageDir, usersFilePath, projecstDir);
         users = new Users(storage);
+        projects = new Projects(storage);
         restore();
     }
 
@@ -199,48 +202,189 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                 break;
 
             case "listusers":
-                if(users.isLogged(key))
+                if (users.isLogged(key))
                     key.attach(new Response(true, "Lista utenti:", users.getUsersList()));
                 else
                     key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "listonlineusers":
-                if(users.isLogged(key))
+                if (users.isLogged(key))
                     key.attach(new Response(true, "Lista utenti:", users.getOnlineUsersList()));
                 else
                     key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "listprojects":
+                if (users.isLogged(key))
+                    key.attach(new Response(true, "Lista progetti:", projects.listProjects(users.getUsernameByKey(key)).toArray(new String[0])));
+                else
+                    key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "createproject":
+                if (users.isLogged(key)) {
+                    try {
+                        projects.addProject(splittedCommand[1]);
+                        projects.addMember(splittedCommand[1], users.getUsernameByKey(key));
+                    } catch (IOException e) {
+                        key.attach(new Response(false, "Server error"));
+                    }
+                    key.attach(new Response(true, "Creato progetto " + splittedCommand[1]));
+                } else
+                    key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "addmember":
+                if (users.isLogged(key)) {
+                    try {
+                        Project project = projects.getByName(splittedCommand[1]);
+                        if (!project.isMember(users.getUsernameByKey(key))) {
+                            key.attach(new Response(false, "Non sei membro del progetto"));
+                        } else {
+                            project.addMember(splittedCommand[2]);
+                            projects.updateProjects();
+                            key.attach(new Response(true, "Aggiunto utente " + splittedCommand[2] + " a progetto " + splittedCommand[1]));
+                        }
+                    } catch (ProjectNotFoundException e) {
+                        key.attach(new Response(false, "Progetto non trovato"));
+                    } catch (IOException e) {
+                        key.attach(new Response(false, "Server error"));
+                    }
+                } else
+                    key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "showmembers":
+                if (users.isLogged(key)) {
+                    try {
+                        Project project = projects.getByName(splittedCommand[1]);
+                        if (!project.isMember(users.getUsernameByKey(key))) {
+                            key.attach(new Response(false, "Non sei membro del progetto"));
+                        } else {
+                            key.attach(new Response(true, "Membri: \n", (String[]) project.getMembers().toArray()));
+                        }
+                    } catch (ProjectNotFoundException e) {
+                        key.attach(new Response(false, "Progetto non trovato"));
+                    }
+                } else
+                    key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "showcards":
+                if (users.isLogged(key)) {
+                    try {
+                        Project project = projects.getByName(splittedCommand[1]);
+                        if (!project.isMember(users.getUsernameByKey(key))) {
+                            key.attach(new Response(false, "Non sei membro del progetto"));
+                        } else {
+                            key.attach(new Response(true, "Membri: \n", (String[]) project.getCards().toArray()));
+                        }
+                    } catch (ProjectNotFoundException e) {
+                        key.attach(new Response(false, "Progetto non trovato"));
+                    }
+                } else
+                    key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "showcard":
+                if (users.isLogged(key)) {
+                    try {
+                        Project project = projects.getByName(splittedCommand[1]);
+                        if (!project.isMember(users.getUsernameByKey(key))) {
+                            key.attach(new Response(false, "Non sei membro del progetto"));
+                        } else {
+                            key.attach(new Response(true, "Membri: \n", (String[]) project.getCardInfo(splittedCommand[2]).toArray()));
+                        }
+                    } catch (ProjectNotFoundException e) {
+                        key.attach(new Response(false, "Progetto non trovato"));
+                    } catch (CardNotFoundException e) {
+                        key.attach(new Response(false, "Card non trovata"));
+                    }
+                } else
+                    key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "addcard":
+                if (users.isLogged(key)) {
+                    try {
+                        Project project = projects.getByName(splittedCommand[1]);
+                        if (!project.isMember(users.getUsernameByKey(key))) {
+                            key.attach(new Response(false, "Non sei membro del progetto"));
+                        } else {
+                            project.createCard(splittedCommand[2], splittedCommand[3]);
+                            projects.updateProjects();
+                            key.attach(new Response(true, "Aggiunta card " + splittedCommand[2] + " a progetto " + splittedCommand[1]));
+                        }
+                    } catch (ProjectNotFoundException e) {
+                        key.attach(new Response(false, "Progetto non trovato"));
+                    } catch (IOException e) {
+                        key.attach(new Response(false, "Server error"));
+                    }
+                } else
+                    key.attach(new Response(false, "Non sei loggato"));
                 break;
 
 
             case "movecard":
+                if (users.isLogged(key)) {
+                    try {
+                        Project project = projects.getByName(splittedCommand[1]);
+                        if (!project.isMember(users.getUsernameByKey(key))) {
+                            key.attach(new Response(false, "Non sei membro del progetto"));
+                        } else {
+                            project.moveCard(splittedCommand[2], splittedCommand[3], splittedCommand[4]);
+                            projects.updateProjects();
+                            key.attach(new Response(true, "Spostamento avvenuto con successo"));
+                        }
+                    } catch (ProjectNotFoundException e) {
+                        key.attach(new Response(false, "Progetto non trovato"));
+                    } catch (CardNotFoundException e) {
+                        key.attach(new Response(false, "Card non trovata"));
+                    } catch (IllegalMoveException e) {
+                        key.attach(new Response(false, "Spostamento non consentito"));
+                    } catch (IOException e) {
+                        key.attach(new Response(false, "Server error"));
+                    }
+                } else
+                    key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "getcardhistory":
+                if (users.isLogged(key)) {
+                    try {
+                        Project project = projects.getByName(splittedCommand[1]);
+                        if (!project.isMember(users.getUsernameByKey(key))) {
+                            key.attach(new Response(false, "Non sei membro del progetto"));
+                        } else {
+                            key.attach(new Response(true, "Cronologia card: \n", (String[]) project.getCardHistory(splittedCommand[2]).toArray()));
+                        }
+                    } catch (ProjectNotFoundException e) {
+                        key.attach(new Response(false, "Progetto non trovato"));
+                    } catch (CardNotFoundException e) {
+                        key.attach(new Response(false, "Card non trovata"));
+                    }
+                } else
+                    key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "cancelproject":
+                if (users.isLogged(key)) {
+                    try {
+                        Project project = projects.getByName(splittedCommand[1]);
+                        if (!project.isMember(users.getUsernameByKey(key))) {
+                            key.attach(new Response(false, "Non sei membro del progetto"));
+                        } else {
+                            projects.deleteProject(project);
+                            key.attach(new Response(true, "Eliminato progetto " + splittedCommand[1]));
+                        }
+                    } catch (ProjectNotFoundException e) {
+                        key.attach(new Response(false, "Progetto non trovato"));
+                    } catch (IOException e) {
+                        key.attach(new Response(false, "Server error"));
+                    }
+                } else
+                    key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "readchat":
@@ -254,6 +398,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                 break;
 
             default:
+                key.attach(new Response(false, "Comando non trovato"));
                 break;
         }
     }
@@ -334,7 +479,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
             registry.bind(name, stub);
             serverMain.start();
         } catch (Exception e) {
-            System.out.println("Eccezione" + e);
+            e.printStackTrace();
         }
     }
 }

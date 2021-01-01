@@ -1,4 +1,4 @@
-import Utils.Response;
+import Exceptions.UserNotFoundException;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
@@ -92,5 +92,9 @@ public class Users {
         User user = userKeys.get(key);
         user.setOnline(false);
         userKeys.remove(key);
+    }
+
+    public String getUsernameByKey(SelectionKey key) {
+        return userKeys.get(key).getUsername();
     }
 }
