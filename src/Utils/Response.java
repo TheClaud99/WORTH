@@ -8,7 +8,7 @@ public class Response implements Serializable {
 
     public String[] list;
 
-    Response(boolean success) {
+    public Response(boolean success) {
         this.success = success;
         this.message = "";
     }

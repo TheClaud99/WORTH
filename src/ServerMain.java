@@ -52,7 +52,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
     private final ObjectMapper mapper;
 
-    private StorageManager storage;
+    private final StorageManager storage;
 
     /* crea un nuovo servente */
     public ServerMain() throws IOException {
@@ -151,7 +151,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                 try {
                     String command = this.readClientMessage(sel, key);
                     executeCommand(command, key);
-                    if (!command.equals(this.EXIT_CMD)) key.interestOps(SelectionKey.OP_WRITE);
                 } catch (IOException e) {
                     cancelKey(key);
                 } catch (ArrayIndexOutOfBoundsException e) {
@@ -167,11 +166,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
     private void executeCommand(String command, SelectionKey key) throws IOException, ArrayIndexOutOfBoundsException {
         String[] splittedCommand = command.split(" ");
         System.out.println("Command requested: " + command);
-
-        if (command.equals(this.EXIT_CMD)) {
-            cancelKey(key);
-            return;
-        }
 
         switch (splittedCommand[0].toLowerCase()) {
             case "login":
@@ -373,14 +367,20 @@ public class ServerMain extends RemoteObject implements ServerInterface {
             case "sendchatmsg":
                 break;
 
+            case EXIT_CMD:
+                cancelKey(key);
+                return;
+
             case "":
-            case "exit":
+                key.attach(new Response(true));
                 break;
 
             default:
                 key.attach(new Response(false, "Comando non trovato"));
                 break;
         }
+
+        key.interestOps(SelectionKey.OP_WRITE);
     }
 
     /**
@@ -418,10 +418,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
         c_channel.read(bfs);
 
         bfs.flip();
-        String msg = new String(bfs.array()).trim();
-        System.out.printf("Server: ricevuto %s\n", msg);
-
-        return msg;
+        return new String(bfs.array()).trim();
     }
 
     /**
