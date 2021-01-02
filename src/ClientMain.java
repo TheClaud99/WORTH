@@ -6,7 +6,6 @@ import Utils.Notification;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -14,7 +13,7 @@ import java.rmi.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.*;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 
 public class ClientMain extends UnicastRemoteObject implements NotifyEventInterface {
@@ -26,21 +25,25 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
     private final ServerInterface server;
     private String username;
     private String password;
+    private boolean logged;
 
     private Map<String, String> chatList;
-    private String[] users;
+    private Map<String, Boolean> users;
 
     private static final String ServerAddress = "127.0.0.1";
     private final int BUFFER_DIMENSION = 1024;
     private static final int RMIport = 5000; //RMI port
     private static final int TCPport = 1919; //TCP port for connection
     private final String EXIT_CMD = "exit";
+    private SocketChannel client;
 
     private boolean exit;
 
     /* crea un nuovo callback client */
     public ClientMain(ServerInterface server) throws RemoteException {
         super();
+        this.users = new HashMap<>();
+        this.chatList = new HashMap<>();
         this.server = server;
     }
 
@@ -53,31 +56,108 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
         this.chatList = notification.porjectChatIps;
     }
 
-    public Response register(String username, String password) throws RemoteException, UserNotFoundException {
+    public Response register(String username, String password) throws IOException, UserNotFoundException, ClassNotFoundException {
         Response response = server.register(username, password);
         login(username, password);
         return response;
     }
 
-    public void login(String username, String password) throws RemoteException, UserNotFoundException {
+    public void login(String username, String password) throws IOException, UserNotFoundException, ClassNotFoundException {
         this.username = username;
         this.password = password;
-//         NotifyEventInterface stub = (NotifyEventInterface) UnicastRemoteObject.exportObject(this, 0);
         server.registerForCallback(this, username);
+        sendCommand(String.format("login %s %s", username, password));
+        Response response = getResponse();
+        if (response.success) {
+            System.out.println("Login avvenuto con successo");
+            logged = true;
+        }
+        else
+            server.unregisterForCallback(username);
     }
 
     public void close() {
         try {
-            server.unregisterForCallback(this.username);
+            if(logged)
+                server.unregisterForCallback(this.username);
         } catch (RemoteException | UserNotFoundException e) {
             e.printStackTrace();
         }
         System.exit(1);
     }
 
-    public void start() {
+    private void sendCommand(String command) throws IOException {
+        // Creo il messaggio da inviare al server
+        ByteBuffer readBuffer = ByteBuffer.wrap(command.getBytes());
+        client.write(readBuffer);
+        readBuffer.clear();
+    }
 
-        try (SocketChannel client = SocketChannel.open(new InetSocketAddress(ServerAddress, TCPport))) {
+    private Response getResponse() throws IOException, ClassNotFoundException {
+        ByteBuffer reply = ByteBuffer.allocate(BUFFER_DIMENSION);
+        client.read(reply);
+        reply.flip();
+        Response response = (Response) Utils.deserialize(reply.array());
+        reply.clear();
+        return response;
+    }
+
+    private void executeCommand(String command, SocketChannel client) throws IOException, ClassNotFoundException, UserNotFoundException, ArrayIndexOutOfBoundsException {
+        String[] splittedCommand = command.split(" ");
+        Response response;
+
+        switch (splittedCommand[0].toLowerCase()) {
+
+            case "listusers":
+                for (Map.Entry<String, Boolean>  user : users.entrySet())
+                    if(user.getValue())
+                        System.out.println(user.getKey() + ": Online");
+                    else
+                        System.out.println(user.getKey() + ": Offline");
+                break;
+
+            case "listonlineusers":
+                for (Map.Entry<String, Boolean>  user : users.entrySet())
+                    if(user.getValue())
+                        System.out.println(user.getKey());
+                break;
+
+            case "readchat":
+                break;
+
+            case "sendchatmsg":
+                break;
+
+            case "login":
+                login(splittedCommand[1], splittedCommand[2]);
+                break;
+            case "listprojects":
+            case "showmembers":
+            case "showcards":
+            case "showcard":
+            case "getcardhistory":
+                sendCommand(command);
+                response = getResponse();
+                System.out.printf("Risposta server: \n %s\n", response.message);
+                if (response.success)
+                    for (String text : response.list)
+                        System.out.println(text);
+                break;
+
+            case EXIT_CMD:
+                break;
+
+            default:
+                sendCommand(command);
+                response = getResponse();
+                System.out.printf("Risposta server: %s\n", response.message);
+                break;
+        }
+    }
+
+    public void start() throws IOException {
+        try {
+            client = SocketChannel.open(new InetSocketAddress(ServerAddress, TCPport));
             BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
 
             System.out.println("Client: connesso");
@@ -86,49 +166,26 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
             while (!this.exit) {
 
                 String msg = consoleReader.readLine().trim();
-                String command = msg.split(" ")[0];
 
-                if(command.equals("login")) {
-                    login(msg.split(" ")[1], msg.split(" ")[2]);
+                try {
+                    executeCommand(msg, client);
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    System.out.println("Missing arguments");
+                } catch (UserNotFoundException e) {
+                    System.out.println(e.getMessage());
                 }
-
-                // Creo il messaggio da inviare al server
-                ByteBuffer readBuffer = ByteBuffer.wrap(msg.getBytes());
-
-                client.write(readBuffer);
-                readBuffer.clear();
 
                 if (msg.equals(this.EXIT_CMD)) {
                     this.exit = true;
-                    continue;
                 }
-
-                ByteBuffer reply = ByteBuffer.allocate(BUFFER_DIMENSION);
-                client.read(reply);
-                reply.flip();
-                Response response = (Response) Utils.deserialize(reply.array());
-                System.out.printf("Risposta server: %s\n", response.message);
-                reply.clear();
-
-                if (response.success) {
-                    if (command.equalsIgnoreCase("listusers") || command.equalsIgnoreCase("listonlineusers")
-                            || command.equalsIgnoreCase("listprojects")
-                            || command.equalsIgnoreCase("showmembers")
-                            || command.equalsIgnoreCase("showcards")
-                            || command.equalsIgnoreCase("showcard")
-                            || command.equalsIgnoreCase("getcardhistory")) {
-                        for (String text : response.list) {
-                            System.out.println(text);
-                        }
-                    }
-                }
-
 
             }
             System.out.println("Client: chiusura");
             close();
-        } catch (IOException | ClassNotFoundException | UserNotFoundException e) {
+        } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
+        } finally {
+            client.close();
         }
     }
 

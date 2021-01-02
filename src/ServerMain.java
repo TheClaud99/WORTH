@@ -73,14 +73,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
         storage = new StorageManager(storageDir, usersFilePath, projecstDir);
         users = new Users(storage);
         projects = new Projects(storage);
-        restore();
-    }
-
-    public void restore() {
-        /*try {
-        } catch (IOException e) {
-            e.printStackTrace();
-        }*/
     }
 
     public synchronized void registerForCallback(NotifyEventInterface clientInterface, String username) throws RemoteException, UserNotFoundException {
@@ -139,6 +131,12 @@ public class ServerMain extends RemoteObject implements ServerInterface {
         }
     }
 
+    private void cancelKey(SelectionKey key) throws IOException {
+        users.logout(key);
+        key.channel().close();
+        key.cancel();
+    }
+
     private void iterateKeys(Selector sel) throws IOException {
         if (sel.select() == 0)
             return;
@@ -163,23 +161,28 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                 System.out.printf("Server: numero di connessioni aperte: %d\n", ++this.numberActiveConnections);
                 this.registerRead(sel, c_channel);
             } else if (key.isReadable()) { // READABLE
-                String command = this.readClientMessage(sel, key);
-                executeCommand(command, key);
-                if (!command.equals(this.EXIT_CMD)) key.interestOps(SelectionKey.OP_WRITE);
+                try {
+                    String command = this.readClientMessage(sel, key);
+                    executeCommand(command, key);
+                    if (!command.equals(this.EXIT_CMD)) key.interestOps(SelectionKey.OP_WRITE);
+                } catch (IOException e) {
+                    cancelKey(key);
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    key.attach(new Response(false, "Missing arguments"));
+                    key.interestOps(SelectionKey.OP_WRITE);
+                }
             } else if (key.isWritable()) { // WRITABLE
                 this.answerClient(sel, key);
             }
         }
     }
 
-    private void executeCommand(String command, SelectionKey key) throws IOException {
+    private void executeCommand(String command, SelectionKey key) throws IOException, ArrayIndexOutOfBoundsException {
         String[] splittedCommand = command.split(" ");
         System.out.println("Command requested: " + command);
 
         if (command.equals(this.EXIT_CMD)) {
-            users.logout(key);
-            key.channel().close();
-            key.cancel();
+            cancelKey(key);
             return;
         }
 
@@ -197,20 +200,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                     key.attach(new Response(false, "Utente non trovato"));
                 }
             case "logout":
-                break;
-
-            case "listusers":
-                if (users.isLogged(key))
-                    key.attach(new Response(true, "Lista utenti:", users.getUsersList()));
-                else
-                    key.attach(new Response(false, "Non sei loggato"));
-                break;
-
-            case "listonlineusers":
-                if (users.isLogged(key))
-                    key.attach(new Response(true, "Lista utenti:", users.getOnlineUsersList()));
-                else
-                    key.attach(new Response(false, "Non sei loggato"));
                 break;
 
             case "listprojects":
@@ -279,7 +268,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                         if (!project.isMember(users.getUsernameByKey(key))) {
                             key.attach(new Response(false, "Non sei membro del progetto"));
                         } else {
-                            key.attach(new Response(true, "Membri: \n", project.getCardsList().toArray(new String[0])));
+                            key.attach(new Response(true, "Cards:", project.getCardsList().toArray(new String[0])));
                         }
                     } catch (ProjectNotFoundException e) {
                         key.attach(new Response(false, "Progetto non trovato"));
@@ -295,7 +284,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                         if (!project.isMember(users.getUsernameByKey(key))) {
                             key.attach(new Response(false, "Non sei membro del progetto"));
                         } else {
-                            key.attach(new Response(true, "Info card: \n", project.getCardInfo(splittedCommand[2]).toArray(new String[0])));
+                            key.attach(new Response(true, "Info card:", project.getCardInfo(splittedCommand[2]).toArray(new String[0])));
                         }
                     } catch (ProjectNotFoundException e) {
                         key.attach(new Response(false, "Progetto non trovato"));
@@ -346,6 +335,8 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                         key.attach(new Response(false, "Spostamento non consentito"));
                     } catch (IOException e) {
                         key.attach(new Response(false, "Server error"));
+                    } catch (IllegalArgumentException e) {
+                        key.attach(new Response(false, "Lo stato di partenza non è quello indicato"));
                     }
                 } else
                     key.attach(new Response(false, "Non sei loggato"));
@@ -358,7 +349,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                         if (!project.isMember(users.getUsernameByKey(key))) {
                             key.attach(new Response(false, "Non sei membro del progetto"));
                         } else {
-                            key.attach(new Response(true, "Cronologia card: \n", project.getCardHistory(splittedCommand[2]).toArray(new String[0])));
+                            key.attach(new Response(true, "Cronologia card:", project.getCardHistory(splittedCommand[2]).toArray(new String[0])));
                         }
                     } catch (ProjectNotFoundException e) {
                         key.attach(new Response(false, "Progetto non trovato"));

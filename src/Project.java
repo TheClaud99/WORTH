@@ -8,12 +8,12 @@ import java.util.List;
 public class Project {
 
     private String NAME;
-    private List<Card> Cards;
+    private List<Card> cards;
 
-    private List<String> Cards_TODO;
-    private List<String> Cards_InProgess;
-    private List<String> Cards_Revisited;
-    private List<String> Cards_Done;
+    private List<String> cards_TODO;
+    private List<String> cards_InProgess;
+    private List<String> cards_Revisited;
+    private List<String> cards_Done;
 
     private List<String> members;
 
@@ -22,11 +22,11 @@ public class Project {
 
     public Project(String name) {
         this.NAME = name;
-        this.Cards = new ArrayList<>();
-        this.Cards_TODO = new ArrayList<>();
-        this.Cards_InProgess = new ArrayList<>();
-        this.Cards_Revisited = new ArrayList<>();
-        this.Cards_Done = new ArrayList<>();
+        this.cards = new ArrayList<>();
+        this.cards_TODO = new ArrayList<>();
+        this.cards_InProgess = new ArrayList<>();
+        this.cards_Revisited = new ArrayList<>();
+        this.cards_Done = new ArrayList<>();
         this.IP_Multicast = Utils.randomMutlticastIpv4();
         this.members = new ArrayList<>();
     }
@@ -48,7 +48,7 @@ public class Project {
     }
 
     public void createCard(String name, String description) {
-        for (Card c : Cards) {
+        for (Card c : cards) {
             if (c.getName().equals(name)) throw new IllegalArgumentException();
         }
 
@@ -57,29 +57,29 @@ public class Project {
 
     //Crea una nuova Card e la inserisce, se il nome non è gia usato da un'altra Card
     public void addCard(Card card) {
-        for (Card c : Cards) {
+        for (Card c : cards) {
             if (c.getName().equals(card.getName())) throw new IllegalArgumentException();
         }
 
-        Cards.add(card);
+        cards.add(card);
         switch (card.getState()) {
             case "TODO":
-                Cards_TODO.add(card.getName());
+                cards_TODO.add(card.getName());
                 break;
             case "INPROGRESS":
-                Cards_InProgess.add(card.getName());
+                cards_InProgess.add(card.getName());
                 break;
             case "TOBEREVISED":
-                Cards_Revisited.add(card.getName());
+                cards_Revisited.add(card.getName());
                 break;
             case "DONE":
-                Cards_Done.add(card.getName());
+                cards_Done.add(card.getName());
                 break;
         }
     }
 
     public Card getCardByName(String name) throws CardNotFoundException {
-        for (Card card : Cards) {
+        for (Card card : cards) {
             if (card.getName().equals(name))
                 return card;
         }
@@ -92,7 +92,7 @@ public class Project {
         Card card = getCardByName(name);
 
         if (!card.getState().equals(oldState.toUpperCase()))
-            throw new IllegalArgumentException("Lo stato vecchio non combacia");
+            throw new IllegalArgumentException("Lo stato di partenza non è quello indicato");
 
         switch (oldState.toUpperCase()) {
             case "TODO":
@@ -100,8 +100,8 @@ public class Project {
                     throw new IllegalMoveException(oldState, newState);
                 } else {
                     card.changeStatus("INPROGRESS");
-                    Cards_TODO.remove(name);
-                    Cards_InProgess.add(name);
+                    cards_TODO.remove(name);
+                    cards_InProgess.add(name);
                     break;
                 }
             case "INPROGRESS":
@@ -110,11 +110,11 @@ public class Project {
                 } else {
                     card.changeStatus(newState.toUpperCase());
                     if (newState.equalsIgnoreCase("TOBEREVISED")) {
-                        Cards_InProgess.remove(name);
-                        Cards_Revisited.add(name);
+                        cards_InProgess.remove(name);
+                        cards_Revisited.add(name);
                     } else {
-                        Cards_InProgess.remove(name);
-                        Cards_Done.add(name);
+                        cards_InProgess.remove(name);
+                        cards_Done.add(name);
                     }
                     break;
                 }
@@ -124,11 +124,11 @@ public class Project {
                 } else {
                     card.changeStatus(newState.toUpperCase());
                     if (newState.equalsIgnoreCase("INPROGRESS")) {
-                        Cards_Revisited.remove(name);
-                        Cards_InProgess.add(name);
+                        cards_Revisited.remove(name);
+                        cards_InProgess.add(name);
                     } else {
-                        Cards_Revisited.remove(name);
-                        Cards_Done.add(name);
+                        cards_Revisited.remove(name);
+                        cards_Done.add(name);
                     }
                     break;
                 }
@@ -140,19 +140,18 @@ public class Project {
     //restituisce una lista con i nomi di tutte le Card
     public List<String> getCardsList() {
         List<String> lst = new ArrayList<>();
-        lst.addAll(Cards_TODO);
-        lst.addAll(Cards_InProgess);
-        lst.addAll(Cards_Revisited);
-        lst.addAll(Cards_Done);
+        for (Card card : cards) {
+            lst.add(card.getName() + " " + card.getState());
+        }
         return lst;
     }
 
     public List<Card> getCards() {
-        return Cards;
+        return cards;
     }
 
     public boolean isDone() {
-        return Cards_Done.size() == Cards.size();
+        return cards_Done.size() == cards.size();
     }
 
     public List<String> getCardHistory(String name) {

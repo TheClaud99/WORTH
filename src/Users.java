@@ -36,7 +36,7 @@ public class Users {
             }
         }
 
-        throw new UserNotFoundException();
+        throw new UserNotFoundException("Utente '" + username + "' non trovato");
     }
 
     public boolean register(String username, String password) throws IOException {
@@ -77,14 +77,10 @@ public class Users {
         return userKeys.containsKey(userKey);
     }
 
-    public String[] getUsersList() {
-        String[] usersList = new String[users.size()];
-        for (int i = 0; i < users.size(); i++) {
-            User user = users.get(i);
-            if(user.isOnline())
-                usersList[i] = user.getUsername() + ": online";
-            else
-                usersList[i] = user.getUsername() + ": offline";
+    public Map<String, Boolean> getUsersList() {
+        Map<String, Boolean> usersList = new HashMap<>();
+        for (User user : users) {
+            usersList.put(user.getUsername(), user.isOnline());
         }
 
         return usersList;
