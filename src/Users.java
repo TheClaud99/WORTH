@@ -10,12 +10,9 @@ import java.util.Map;
 
 public class Users {
 
-    private ArrayList<User> users;
-    private StorageManager storage;
-    private Map<SelectionKey, User> userKeys;
-
-    Users() {
-    }
+    private final ArrayList<User> users;
+    private final StorageManager storage;
+    private final Map<SelectionKey, User> userKeys;
 
     Users(StorageManager storage) throws IOException {
         this.storage = storage;

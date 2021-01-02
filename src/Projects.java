@@ -1,10 +1,8 @@
 import Exceptions.CardNotFoundException;
 import Exceptions.IllegalMoveException;
 import Exceptions.ProjectNotFoundException;
-import Exceptions.UserNotFoundException;
 
 import java.io.IOException;
-import java.nio.channels.SelectionKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -12,11 +10,8 @@ import java.util.Map;
 
 public class Projects {
 
-    private ArrayList<Project> projects;
-    private StorageManager storage;
-
-    Projects() {
-    }
+    private final ArrayList<Project> projects;
+    private final StorageManager storage;
 
     Projects(StorageManager storage) throws IOException {
         this.storage = storage;

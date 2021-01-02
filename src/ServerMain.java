@@ -149,7 +149,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                 this.registerRead(sel, c_channel);
             } else if (key.isReadable()) { // READABLE
                 try {
-                    String command = this.readClientMessage(sel, key);
+                    String command = this.readClientMessage(key);
                     executeCommand(command, key);
                 } catch (IOException e) {
                     cancelKey(key);
@@ -361,12 +361,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                     key.attach(new Response(false, "Non sei loggato"));
                 break;
 
-            case "readchat":
-                break;
-
-            case "sendchatmsg":
-                break;
-
             case EXIT_CMD:
                 cancelKey(key);
                 return;
@@ -403,11 +397,10 @@ public class ServerMain extends RemoteObject implements ServerInterface {
      * legge il messaggio inviato dal client e registra l'interesse all'operazione
      * di WRITE sul selettore
      *
-     * @param sel selettore utilizzato dal server
      * @param key chiave di selezione
      * @throws IOException se si verifica un errore di I/O
      */
-    private String readClientMessage(Selector sel, SelectionKey key) throws IOException {
+    private String readClientMessage(SelectionKey key) throws IOException {
         /*
          * accetta una nuova connessione creando un SocketChannel per la comunicazione
          * con il client che la richiede

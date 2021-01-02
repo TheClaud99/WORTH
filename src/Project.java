@@ -7,18 +7,16 @@ import java.util.List;
 
 public class Project {
 
-    private String NAME;
-    private List<Card> cards;
+    private final String NAME;
+    private final List<Card> cards;
 
-    private List<String> cards_TODO;
-    private List<String> cards_InProgess;
-    private List<String> cards_Revisited;
-    private List<String> cards_Done;
+    private final List<String> cards_TODO;
+    private final List<String> cards_InProgess;
+    private final List<String> cards_Revisited;
+    private final List<String> cards_Done;
 
     private List<String> members;
-
-    private String IP_Multicast;
-    private int PORT = 1998;
+    private final String IP_Multicast;
 
     public Project(String name) {
         this.NAME = name;

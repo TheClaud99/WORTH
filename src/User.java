@@ -3,7 +3,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.rmi.RemoteException;
-import java.util.Arrays;
 
 @JsonPropertyOrder({ "username", "password"})
 public class User {

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class ChatThread extends Thread {
@@ -36,7 +37,7 @@ public class ChatThread extends Thread {
         byte[] msg_recived = new byte[BUFFER_SIZE];
         DatagramPacket PACK = new DatagramPacket(msg_recived, msg_recived.length, this.group, this.port);
         multicast.receive(PACK);
-        String msg = new String(PACK.getData(), 0, PACK.getLength(), "UTF-8");
+        String msg = new String(PACK.getData(), 0, PACK.getLength(), StandardCharsets.UTF_8);
 
         addMessage(msg);
     }
