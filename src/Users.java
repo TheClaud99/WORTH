@@ -1,3 +1,5 @@
+import Exceptions.MultipleLoginsException;
+import Exceptions.UserAlreadyLoggedException;
 import Exceptions.UserNotFoundException;
 import Utils.Notification;
 
@@ -49,8 +51,10 @@ public class Users {
         return true;
     }
 
-    public boolean login(String username, String password, SelectionKey userKey) throws UserNotFoundException {
+    public boolean login(String username, String password, SelectionKey userKey) throws UserNotFoundException, UserAlreadyLoggedException, MultipleLoginsException {
         User user = getByUsername(username);
+        if(userKeys.containsKey(userKey)) throw new UserAlreadyLoggedException();
+        if(user.isOnline()) throw new MultipleLoginsException();
         if (user.login(password)) {
             userKeys.put(userKey, user);
             return true;

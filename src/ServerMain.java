@@ -1,7 +1,4 @@
-import Exceptions.CardNotFoundException;
-import Exceptions.IllegalMoveException;
-import Exceptions.ProjectNotFoundException;
-import Exceptions.UserNotFoundException;
+import Exceptions.*;
 import Utils.Response;
 import Utils.Utils;
 import Utils.Notification;
@@ -182,6 +179,8 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                     }
                 } catch (UserNotFoundException e) {
                     key.attach(new Response(false, "Utente non trovato"));
+                } catch (MultipleLoginsException | UserAlreadyLoggedException e) {
+                    key.attach(new Response(false, e.getMessage()));
                 }
             case "logout":
                 break;

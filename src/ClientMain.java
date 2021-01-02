@@ -104,6 +104,7 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
             System.out.println("Login avvenuto con successo");
             logged = true;
         } else
+            System.out.println(response.message);
             server.unregisterForCallback(username);
     }
 
