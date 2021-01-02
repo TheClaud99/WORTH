@@ -351,6 +351,8 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                         Project project = projects.getByName(splittedCommand[1]);
                         if (!project.isMember(users.getUsernameByKey(key))) {
                             key.attach(new Response(false, "Non sei membro del progetto"));
+                        } if (!project.isDone()) {
+                            key.attach(new Response(false, "Non puoi eliminare un progetto non completato"));
                         } else {
                             projects.deleteProject(project);
                             notifyUsers();

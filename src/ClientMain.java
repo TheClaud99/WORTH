@@ -15,7 +15,9 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.*;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class ClientMain extends UnicastRemoteObject implements NotifyEventInterface {
     /**
@@ -63,10 +65,12 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
         }
 
         // Elimina le chat dei progetti eliminati
-        for (Map.Entry<String, ChatThread> chat : chatList.entrySet()) {
+        Iterator<Entry<String, ChatThread>> iterator = chatList.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Entry<String, ChatThread> chat = iterator.next();
             if(!porjectChatIps.containsKey(chat.getKey())) {
                 chat.getValue().interrupt();
-                chatList.remove(chat.getKey());
+                iterator.remove();
             }
         }
     }
