@@ -35,7 +35,7 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
     private final int BUFFER_DIMENSION = 1024;
     private static final int RMIport = 5000; //RMI port
     private static final int TCPport = 1919; //TCP port for connection
-    private static final int CHAT_PORT = 2000; //TCP port for connection
+    private static final int CHAT_PORT = 2000; //Chat UDP port
     private final String EXIT_CMD = "exit";
     private SocketChannel client;
 

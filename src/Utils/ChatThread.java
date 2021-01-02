@@ -42,6 +42,13 @@ public class ChatThread extends Thread {
         addMessage(msg);
     }
 
+    public static void sendMessage(String groupAddress, int port, String message) throws IOException {
+        InetAddress group = InetAddress.getByName(groupAddress);
+        MulticastSocket multicast = new MulticastSocket(port);
+        byte[] buffer = message.getBytes();
+        DatagramPacket datagram = new DatagramPacket(buffer, buffer.length, group, port);
+        multicast.send(datagram);
+    }
 
     public void addMessage(String msg) {
         queue.put(msg);

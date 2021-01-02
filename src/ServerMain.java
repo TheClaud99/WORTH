@@ -5,6 +5,7 @@ import Exceptions.UserNotFoundException;
 import Utils.Response;
 import Utils.Utils;
 import Utils.Notification;
+import Utils.ChatThread;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
@@ -54,6 +55,8 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
     private final StorageManager storage;
 
+    private static final int CHAT_PORT = 2000;
+
     /* crea un nuovo servente */
     public ServerMain() throws IOException {
         super();
@@ -74,7 +77,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
     }
 
     public void notifyUsers() {
-        for(User user : users.getUsers()) {
+        for (User user : users.getUsers()) {
             try {
                 user.notify(new Notification(users.getUsersList(), projects.getChatList(user.getUsername())));
             } catch (RemoteException e) {
@@ -307,6 +310,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                             project.moveCard(splittedCommand[2], splittedCommand[3], splittedCommand[4]);
                             projects.updateProjects();
                             key.attach(new Response(true, "Spostamento avvenuto con successo"));
+                            ChatThread.sendMessage(project.getIP_Multicast(), CHAT_PORT, String.format("%s ha spostato %s da %s a %s", users.getUsernameByKey(key), splittedCommand[2], splittedCommand[3], splittedCommand[4]));
                         }
                     } catch (ProjectNotFoundException e) {
                         key.attach(new Response(false, "Progetto non trovato"));
