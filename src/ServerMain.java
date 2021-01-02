@@ -26,9 +26,8 @@ public class ServerMain extends RemoteObject implements ServerInterface {
      *
      */
     private static final long serialVersionUID = 150859790584022983L;
-    private List<NotifyEventInterface> clients;
-    private Users users;
-    private Projects projects;
+    private final Users users;
+    private final Projects projects;
 
     /**
      * dimensione del buffer utilizzato per la lettura
@@ -43,14 +42,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
      */
     private static final int RMIport = 5000; //RMI port
     private static final int TCPport = 1919; //TCP port for connection
-    /**
-     * messaggio di risposta
-     */
-    private final String ADD_ANSWER = "echoed by server";
-    /**
-     * numero di client con i quali è aperta una connessione
-     */
-    public int numberActiveConnections;
 
     /**
      * Storage informations
@@ -58,7 +49,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
     private final String storageDir = "./storage";
     private final String usersFilePath = storageDir + "/users.json";
     private final String projecstDir = storageDir + "/projects";
-    private final String cardFile = projecstDir + "/card_%s.json";
 
     private final ObjectMapper mapper;
 
@@ -67,7 +57,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
     /* crea un nuovo servente */
     public ServerMain() throws IOException {
         super();
-        clients = new ArrayList<>();
         mapper = new ObjectMapper();
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
         storage = new StorageManager(storageDir, usersFilePath, projecstDir);
@@ -116,7 +105,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
      * avvia l'esecuzione del server
      */
     public void start() {
-        this.numberActiveConnections = 0;
         try (ServerSocketChannel s_channel = ServerSocketChannel.open()) {
             s_channel.socket().bind(new InetSocketAddress(TCPport));
             s_channel.configureBlocking(false);
@@ -158,7 +146,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                 c_channel.configureBlocking(false);
                 System.out.println(
                         "Server: accettata nuova connessione dal client: " + c_channel.getRemoteAddress());
-                System.out.printf("Server: numero di connessioni aperte: %d\n", ++this.numberActiveConnections);
                 this.registerRead(sel, c_channel);
             } else if (key.isReadable()) { // READABLE
                 try {
