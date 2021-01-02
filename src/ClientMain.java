@@ -1,5 +1,7 @@
+import Exceptions.UserNotFoundException;
 import Utils.Response;
 import Utils.Utils;
+import Utils.Notification;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,6 +14,8 @@ import java.rmi.*;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.*;
+import java.util.Arrays;
+import java.util.Map;
 
 public class ClientMain extends UnicastRemoteObject implements NotifyEventInterface {
     /**
@@ -22,6 +26,9 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
     private final ServerInterface server;
     private String username;
     private String password;
+
+    private Map<String, String> chatList;
+    private String[] users;
 
     private static final String ServerAddress = "127.0.0.1";
     private final int BUFFER_DIMENSION = 1024;
@@ -41,28 +48,28 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
      * metodo che può essere richiamato dal servente per notificare una nuova
      * quotazione del titolo
      */
-    public void notifyEvent(int value) throws RemoteException {
-        String returnMessage = "Update event received: " + value;
-        System.out.println(returnMessage);
+    public void notifyEvent(Notification notification) throws RemoteException {
+        this.users = notification.users;
+        this.chatList = notification.porjectChatIps;
     }
 
-    public Response register(String username, String password) throws RemoteException {
+    public Response register(String username, String password) throws RemoteException, UserNotFoundException {
         Response response = server.register(username, password);
         login(username, password);
         return response;
     }
 
-    public void login(String username, String password) throws RemoteException {
+    public void login(String username, String password) throws RemoteException, UserNotFoundException {
         this.username = username;
         this.password = password;
-        // NotifyEventInterface stub = (NotifyEventInterface) UnicastRemoteObject.exportObject(this, 0);
-        server.registerForCallback(this);
+//         NotifyEventInterface stub = (NotifyEventInterface) UnicastRemoteObject.exportObject(this, 0);
+        server.registerForCallback(this, username);
     }
 
     public void close() {
         try {
-            server.unregisterForCallback(this);
-        } catch (RemoteException e) {
+            server.unregisterForCallback(this.username);
+        } catch (RemoteException | UserNotFoundException e) {
             e.printStackTrace();
         }
         System.exit(1);
@@ -79,6 +86,11 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
             while (!this.exit) {
 
                 String msg = consoleReader.readLine().trim();
+                String command = msg.split(" ")[0];
+
+                if(command.equals("login")) {
+                    login(msg.split(" ")[1], msg.split(" ")[2]);
+                }
 
                 // Creo il messaggio da inviare al server
                 ByteBuffer readBuffer = ByteBuffer.wrap(msg.getBytes());
@@ -98,8 +110,6 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
                 System.out.printf("Risposta server: %s\n", response.message);
                 reply.clear();
 
-                String command = msg.split(" ")[0];
-
                 if (response.success) {
                     if (command.equalsIgnoreCase("listusers") || command.equalsIgnoreCase("listonlineusers")
                             || command.equalsIgnoreCase("listprojects")
@@ -117,7 +127,7 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
             }
             System.out.println("Client: chiusura");
             close();
-        } catch (IOException | ClassNotFoundException e) {
+        } catch (IOException | ClassNotFoundException | UserNotFoundException e) {
             e.printStackTrace();
         }
     }

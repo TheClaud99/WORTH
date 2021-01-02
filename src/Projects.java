@@ -105,4 +105,14 @@ public class Projects {
     public void updateProjects() throws IOException {
         storage.updateProjects(projects);
     }
+
+    public Map<String, String> getChatList(String user) {
+        Map<String, String> chatList = new HashMap<>();
+        for(Project project : projects) {
+            if(project.isMember(user)) {
+                chatList.put(project.getName(), project.getIP_Multicast());
+            }
+        }
+        return chatList;
+    }
 }

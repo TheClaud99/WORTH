@@ -1,7 +1,9 @@
 import Exceptions.UserNotFoundException;
+import Utils.Notification;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
+import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -60,6 +62,17 @@ public class Users {
         return false;
     }
 
+    public void setClient(String username, NotifyEventInterface clientInterface) throws UserNotFoundException {
+        User user = getByUsername(username);
+        user.setClient(clientInterface);
+    }
+
+    public void notifyAll(Notification notification) throws RemoteException {
+        for(User user : users) {
+            user.notify(notification);
+        }
+    }
+
     public boolean isLogged(SelectionKey userKey) {
         return userKeys.containsKey(userKey);
     }
@@ -94,10 +107,15 @@ public class Users {
 
         User user = userKeys.get(key);
         user.setOnline(false);
+        user.setClient(null);
         userKeys.remove(key);
     }
 
     public String getUsernameByKey(SelectionKey key) {
         return userKeys.get(key).getUsername();
+    }
+
+    public ArrayList<User> getUsers() {
+        return users;
     }
 }

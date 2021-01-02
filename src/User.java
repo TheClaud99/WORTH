@@ -1,5 +1,9 @@
+import Utils.Notification;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
+import java.rmi.RemoteException;
+import java.util.Arrays;
 
 @JsonPropertyOrder({ "username", "password"})
 public class User {
@@ -17,7 +21,13 @@ public class User {
     }
 
     @JsonIgnore
-    public void setClient(NotifyEventInterface clientInterface) {
+    public synchronized void notify(Notification notification) throws RemoteException {
+        if(this.clientInterface == null) return;
+        this.clientInterface.notifyEvent(notification);
+    }
+
+    @JsonIgnore
+    public synchronized void setClient(NotifyEventInterface clientInterface) {
         this.clientInterface = clientInterface;
     }
 

@@ -4,6 +4,7 @@ import Exceptions.ProjectNotFoundException;
 import Exceptions.UserNotFoundException;
 import Utils.Response;
 import Utils.Utils;
+import Utils.Notification;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
@@ -82,19 +83,22 @@ public class ServerMain extends RemoteObject implements ServerInterface {
         }*/
     }
 
-    public synchronized void registerForCallback(NotifyEventInterface ClientInterface) throws RemoteException {
-        if (!clients.contains(ClientInterface)) {
-            clients.add(ClientInterface);
-            System.out.println("New client registered.");
-        }
+    public synchronized void registerForCallback(NotifyEventInterface clientInterface, String username) throws RemoteException, UserNotFoundException {
+        users.setClient(username, clientInterface);
     }
 
     /* annulla registrazione per il callback */
-    public synchronized void unregisterForCallback(NotifyEventInterface Client) throws RemoteException {
-        if (clients.remove(Client)) {
-            System.out.println("Client unregistered");
-        } else {
-            System.out.println("Unable to unregister client.");
+    public synchronized void unregisterForCallback(String username) throws RemoteException, UserNotFoundException {
+        users.setClient(username, null);
+    }
+
+    public void notifyUsers() {
+        for(User user : users.getUsers()) {
+            try {
+                user.notify(new Notification(users.getUsersList(), projects.getChatList(user.getUsername())));
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -105,6 +109,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
         try {
             boolean succsess = users.register(username, password);
             if (succsess) {
+                notifyUsers();
                 return new Response(true, "Registrazione avvenuta con successo");
             } else {
                 return new Response(false, "Utente già presente");
@@ -113,22 +118,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
             e.printStackTrace();
             return new Response(false, e.toString());
         }
-    }
-
-    /*
-     * notifica di una variazione di valore dell'azione /* quando viene richiamato,
-     * fa il callback a tutti i client registrati
-     */
-    public void update(int value) throws RemoteException {
-        doCallbacks(value);
-    }
-
-    private synchronized void doCallbacks(int value) throws RemoteException {
-        System.out.println("Starting callbacks.");
-        for (NotifyEventInterface client : clients) {
-            client.notifyEvent(value);
-        }
-        System.out.println("Callbacks complete.");
     }
 
     /**
@@ -199,6 +188,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                 try {
                     boolean success = users.login(splittedCommand[1], splittedCommand[2], key);
                     if (success) {
+                        notifyUsers();
                         key.attach(new Response(true, "Login avvenuto con successo"));
                     } else {
                         key.attach(new Response(false, "Password non corretta"));
@@ -235,6 +225,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                     try {
                         projects.addProject(splittedCommand[1]);
                         projects.addMember(splittedCommand[1], users.getUsernameByKey(key));
+                        notifyUsers();
                     } catch (IOException e) {
                         key.attach(new Response(false, "Server error"));
                     }
@@ -253,6 +244,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                             project.addMember(splittedCommand[2]);
                             projects.updateProjects();
                             key.attach(new Response(true, "Aggiunto utente " + splittedCommand[2] + " a progetto " + splittedCommand[1]));
+                            notifyUsers();
                         }
                     } catch (ProjectNotFoundException e) {
                         key.attach(new Response(false, "Progetto non trovato"));
@@ -271,8 +263,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                             key.attach(new Response(false, "Non sei membro del progetto"));
                         } else {
                             String[] members = project.getMembers().toArray(new String[0]);
-                            for(String member : members)
-                                System.out.println(member);
                             key.attach(new Response(true, "Membri:", members));
                         }
                     } catch (ProjectNotFoundException e) {
@@ -387,6 +377,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                             key.attach(new Response(false, "Non sei membro del progetto"));
                         } else {
                             projects.deleteProject(project);
+                            notifyUsers();
                             key.attach(new Response(true, "Eliminato progetto " + splittedCommand[1]));
                         }
                     } catch (ProjectNotFoundException e) {

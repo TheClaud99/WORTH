@@ -1,5 +1,6 @@
 import Exceptions.CardNotFoundException;
 import Exceptions.IllegalMoveException;
+import Utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +27,7 @@ public class Project {
         this.Cards_InProgess = new ArrayList<>();
         this.Cards_Revisited = new ArrayList<>();
         this.Cards_Done = new ArrayList<>();
-
+        this.IP_Multicast = Utils.randomMutlticastIpv4();
         this.members = new ArrayList<>();
     }
 
@@ -168,5 +169,9 @@ public class Project {
 
     public void setMembers(List<String> members) {
         this.members = members;
+    }
+
+    public String getIP_Multicast() {
+        return IP_Multicast;
     }
 }
