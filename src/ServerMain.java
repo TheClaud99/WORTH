@@ -147,42 +147,52 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                 System.out.println(
                         "Server: accettata nuova connessione dal client: " + c_channel.getRemoteAddress());
                 this.registerRead(sel, c_channel);
-            } else if (key.isReadable()) { // READABLE
+            } else if (key.isReadable()) {
+                // READABLE
+                String command = "";
                 try {
-                    String command = this.readClientMessage(key);
+                    command = this.readClientMessage(key);
                     executeCommand(command, key);
                 } catch (IOException e) {
                     cancelKey(key);
+                    continue;
                 } catch (ArrayIndexOutOfBoundsException e) {
                     key.attach(new Response(false, "Missing arguments"));
                     key.interestOps(SelectionKey.OP_WRITE);
+                } catch (UserNotFoundException e) {
+                    key.attach(new Response(false, "Utente non trovato"));
+                } catch (ProjectNotFoundException e) {
+                    key.attach(new Response(false, "Progetto non trovato"));
+                } catch (IllegalArgumentException | MultipleLoginsException | UserAlreadyLoggedException e) {
+                    key.attach(new Response(false, e.getMessage()));
+                } catch (CardNotFoundException e) {
+                    key.attach(new Response(false, "Card non trovata"));
+                } catch (IllegalMoveException e) {
+                    key.attach(new Response(false, "Spostamento non consentito"));
                 }
+
+                if(!command.equals(EXIT_CMD)) key.interestOps(SelectionKey.OP_WRITE);
             } else if (key.isWritable()) { // WRITABLE
                 this.answerClient(sel, key);
             }
         }
     }
 
-    private void executeCommand(String command, SelectionKey key) throws IOException, ArrayIndexOutOfBoundsException {
+    private void executeCommand(String command, SelectionKey key) throws IOException, ArrayIndexOutOfBoundsException, UserNotFoundException,
+            MultipleLoginsException, UserAlreadyLoggedException, ProjectNotFoundException, IllegalMoveException, IllegalArgumentException {
+
         String[] splittedCommand = command.split(" ");
         System.out.println("Command requested: " + command);
 
         switch (splittedCommand[0].toLowerCase()) {
             case "login":
-                try {
-                    boolean success = users.login(splittedCommand[1], splittedCommand[2], key);
-                    if (success) {
-                        notifyUsers();
-                        key.attach(new Response(true, "Login avvenuto con successo"));
-                    } else {
-                        key.attach(new Response(false, "Password non corretta"));
-                    }
-                } catch (UserNotFoundException e) {
-                    key.attach(new Response(false, "Utente non trovato"));
-                } catch (MultipleLoginsException | UserAlreadyLoggedException e) {
-                    key.attach(new Response(false, e.getMessage()));
+                boolean success = users.login(splittedCommand[1], splittedCommand[2], key);
+                if (success) {
+                    notifyUsers();
+                    key.attach(new Response(true, "Login avvenuto con successo"));
+                } else {
+                    key.attach(new Response(false, "Password non corretta"));
                 }
-            case "logout":
                 break;
 
             case "listprojects":
@@ -194,13 +204,9 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
             case "createproject":
                 if (users.isLogged(key)) {
-                    try {
-                        projects.addProject(splittedCommand[1]);
-                        projects.addMember(splittedCommand[1], users.getUsernameByKey(key));
-                        notifyUsers();
-                    } catch (IOException e) {
-                        key.attach(new Response(false, "Server error"));
-                    }
+                    projects.addProject(splittedCommand[1]);
+                    projects.addMember(splittedCommand[1], users.getUsernameByKey(key));
+                    notifyUsers();
                     key.attach(new Response(true, "Creato progetto " + splittedCommand[1]));
                 } else
                     key.attach(new Response(false, "Non sei loggato"));
@@ -208,20 +214,14 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
             case "addmember":
                 if (users.isLogged(key)) {
-                    try {
-                        Project project = projects.getByName(splittedCommand[1]);
-                        if (!project.isMember(users.getUsernameByKey(key))) {
-                            key.attach(new Response(false, "Non sei membro del progetto"));
-                        } else {
-                            project.addMember(splittedCommand[2]);
-                            projects.updateProjects();
-                            key.attach(new Response(true, "Aggiunto utente " + splittedCommand[2] + " a progetto " + splittedCommand[1]));
-                            notifyUsers();
-                        }
-                    } catch (ProjectNotFoundException e) {
-                        key.attach(new Response(false, "Progetto non trovato"));
-                    } catch (IOException e) {
-                        key.attach(new Response(false, "Server error"));
+                    Project project = projects.getByName(splittedCommand[1]);
+                    if (!project.isMember(users.getUsernameByKey(key))) {
+                        key.attach(new Response(false, "Non sei membro del progetto"));
+                    } else {
+                        project.addMember(splittedCommand[2]);
+                        projects.updateProjects();
+                        key.attach(new Response(true, "Aggiunto utente " + splittedCommand[2] + " a progetto " + splittedCommand[1]));
+                        notifyUsers();
                     }
                 } else
                     key.attach(new Response(false, "Non sei loggato"));
@@ -229,16 +229,12 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
             case "showmembers":
                 if (users.isLogged(key)) {
-                    try {
-                        Project project = projects.getByName(splittedCommand[1]);
-                        if (!project.isMember(users.getUsernameByKey(key))) {
-                            key.attach(new Response(false, "Non sei membro del progetto"));
-                        } else {
-                            String[] members = project.getMembers().toArray(new String[0]);
-                            key.attach(new Response(true, "Membri:", members));
-                        }
-                    } catch (ProjectNotFoundException e) {
-                        key.attach(new Response(false, "Progetto non trovato"));
+                    Project project = projects.getByName(splittedCommand[1]);
+                    if (!project.isMember(users.getUsernameByKey(key))) {
+                        key.attach(new Response(false, "Non sei membro del progetto"));
+                    } else {
+                        String[] members = project.getMembers().toArray(new String[0]);
+                        key.attach(new Response(true, "Membri:", members));
                     }
                 } else
                     key.attach(new Response(false, "Non sei loggato"));
@@ -246,15 +242,11 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
             case "showcards":
                 if (users.isLogged(key)) {
-                    try {
-                        Project project = projects.getByName(splittedCommand[1]);
-                        if (!project.isMember(users.getUsernameByKey(key))) {
-                            key.attach(new Response(false, "Non sei membro del progetto"));
-                        } else {
-                            key.attach(new Response(true, "Cards:", project.getCardsList().toArray(new String[0])));
-                        }
-                    } catch (ProjectNotFoundException e) {
-                        key.attach(new Response(false, "Progetto non trovato"));
+                    Project project = projects.getByName(splittedCommand[1]);
+                    if (!project.isMember(users.getUsernameByKey(key))) {
+                        key.attach(new Response(false, "Non sei membro del progetto"));
+                    } else {
+                        key.attach(new Response(true, "Cards:", project.getCardsList().toArray(new String[0])));
                     }
                 } else
                     key.attach(new Response(false, "Non sei loggato"));
@@ -262,17 +254,11 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
             case "showcard":
                 if (users.isLogged(key)) {
-                    try {
-                        Project project = projects.getByName(splittedCommand[1]);
-                        if (!project.isMember(users.getUsernameByKey(key))) {
-                            key.attach(new Response(false, "Non sei membro del progetto"));
-                        } else {
-                            key.attach(new Response(true, "Info card:", project.getCardInfo(splittedCommand[2]).toArray(new String[0])));
-                        }
-                    } catch (ProjectNotFoundException e) {
-                        key.attach(new Response(false, "Progetto non trovato"));
-                    } catch (CardNotFoundException e) {
-                        key.attach(new Response(false, "Card non trovata"));
+                    Project project = projects.getByName(splittedCommand[1]);
+                    if (!project.isMember(users.getUsernameByKey(key))) {
+                        key.attach(new Response(false, "Non sei membro del progetto"));
+                    } else {
+                        key.attach(new Response(true, "Info card:", project.getCardInfo(splittedCommand[2]).toArray(new String[0])));
                     }
                 } else
                     key.attach(new Response(false, "Non sei loggato"));
@@ -280,20 +266,15 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
             case "addcard":
                 if (users.isLogged(key)) {
-                    try {
-                        Project project = projects.getByName(splittedCommand[1]);
-                        if (!project.isMember(users.getUsernameByKey(key))) {
-                            key.attach(new Response(false, "Non sei membro del progetto"));
-                        } else {
-                            project.createCard(splittedCommand[2], splittedCommand[3]);
-                            projects.updateProjects();
-                            key.attach(new Response(true, "Aggiunta card " + splittedCommand[2] + " a progetto " + splittedCommand[1]));
-                        }
-                    } catch (ProjectNotFoundException e) {
-                        key.attach(new Response(false, "Progetto non trovato"));
-                    } catch (IOException e) {
-                        key.attach(new Response(false, "Server error"));
+                    Project project = projects.getByName(splittedCommand[1]);
+                    if (!project.isMember(users.getUsernameByKey(key))) {
+                        key.attach(new Response(false, "Non sei membro del progetto"));
+                    } else {
+                        project.createCard(splittedCommand[2], splittedCommand[3]);
+                        projects.updateProjects();
+                        key.attach(new Response(true, "Aggiunta card " + splittedCommand[2] + " a progetto " + splittedCommand[1]));
                     }
+
                 } else
                     key.attach(new Response(false, "Non sei loggato"));
                 break;
@@ -301,26 +282,14 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
             case "movecard":
                 if (users.isLogged(key)) {
-                    try {
-                        Project project = projects.getByName(splittedCommand[1]);
-                        if (!project.isMember(users.getUsernameByKey(key))) {
-                            key.attach(new Response(false, "Non sei membro del progetto"));
-                        } else {
-                            project.moveCard(splittedCommand[2], splittedCommand[3], splittedCommand[4]);
-                            projects.updateProjects();
-                            key.attach(new Response(true, "Spostamento avvenuto con successo"));
-                            ChatThread.sendMessage(project.getIP_Multicast(), CHAT_PORT, String.format("%s ha spostato %s da %s a %s", users.getUsernameByKey(key), splittedCommand[2], splittedCommand[3], splittedCommand[4]));
-                        }
-                    } catch (ProjectNotFoundException e) {
-                        key.attach(new Response(false, "Progetto non trovato"));
-                    } catch (CardNotFoundException e) {
-                        key.attach(new Response(false, "Card non trovata"));
-                    } catch (IllegalMoveException e) {
-                        key.attach(new Response(false, "Spostamento non consentito"));
-                    } catch (IOException e) {
-                        key.attach(new Response(false, "Server error"));
-                    } catch (IllegalArgumentException e) {
-                        key.attach(new Response(false, "Lo stato di partenza non è quello indicato"));
+                    Project project = projects.getByName(splittedCommand[1]);
+                    if (!project.isMember(users.getUsernameByKey(key))) {
+                        key.attach(new Response(false, "Non sei membro del progetto"));
+                    } else {
+                        project.moveCard(splittedCommand[2], splittedCommand[3], splittedCommand[4]);
+                        projects.updateProjects();
+                        key.attach(new Response(true, "Spostamento avvenuto con successo"));
+                        ChatThread.sendMessage(project.getIP_Multicast(), CHAT_PORT, String.format("%s ha spostato %s da %s a %s", users.getUsernameByKey(key), splittedCommand[2], splittedCommand[3], splittedCommand[4]));
                     }
                 } else
                     key.attach(new Response(false, "Non sei loggato"));
@@ -328,17 +297,11 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
             case "getcardhistory":
                 if (users.isLogged(key)) {
-                    try {
-                        Project project = projects.getByName(splittedCommand[1]);
-                        if (!project.isMember(users.getUsernameByKey(key))) {
-                            key.attach(new Response(false, "Non sei membro del progetto"));
-                        } else {
-                            key.attach(new Response(true, "Cronologia card:", project.getCardHistory(splittedCommand[2]).toArray(new String[0])));
-                        }
-                    } catch (ProjectNotFoundException e) {
-                        key.attach(new Response(false, "Progetto non trovato"));
-                    } catch (CardNotFoundException e) {
-                        key.attach(new Response(false, "Card non trovata"));
+                    Project project = projects.getByName(splittedCommand[1]);
+                    if (!project.isMember(users.getUsernameByKey(key))) {
+                        key.attach(new Response(false, "Non sei membro del progetto"));
+                    } else {
+                        key.attach(new Response(true, "Cronologia card:", project.getCardHistory(splittedCommand[2]).toArray(new String[0])));
                     }
                 } else
                     key.attach(new Response(false, "Non sei loggato"));
@@ -346,21 +309,16 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
             case "cancelproject":
                 if (users.isLogged(key)) {
-                    try {
-                        Project project = projects.getByName(splittedCommand[1]);
-                        if (!project.isMember(users.getUsernameByKey(key))) {
-                            key.attach(new Response(false, "Non sei membro del progetto"));
-                        } if (!project.isDone()) {
-                            key.attach(new Response(false, "Non puoi eliminare un progetto non completato"));
-                        } else {
-                            projects.deleteProject(project);
-                            notifyUsers();
-                            key.attach(new Response(true, "Eliminato progetto " + splittedCommand[1]));
-                        }
-                    } catch (ProjectNotFoundException e) {
-                        key.attach(new Response(false, "Progetto non trovato"));
-                    } catch (IOException e) {
-                        key.attach(new Response(false, "Server error"));
+                    Project project = projects.getByName(splittedCommand[1]);
+                    if (!project.isMember(users.getUsernameByKey(key))) {
+                        key.attach(new Response(false, "Non sei membro del progetto"));
+                    }
+                    if (!project.isDone()) {
+                        key.attach(new Response(false, "Non puoi eliminare un progetto non completato"));
+                    } else {
+                        projects.deleteProject(project);
+                        notifyUsers();
+                        key.attach(new Response(true, "Eliminato progetto " + splittedCommand[1]));
                     }
                 } else
                     key.attach(new Response(false, "Non sei loggato"));
@@ -378,8 +336,6 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                 key.attach(new Response(false, "Comando non trovato"));
                 break;
         }
-
-        key.interestOps(SelectionKey.OP_WRITE);
     }
 
     /**

@@ -76,8 +76,8 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
     }
 
     /*
-     * metodo che può essere richiamato dal servente per notificare una nuova
-     * quotazione del titolo
+     * metodo che può essere richiamato dal servente per notificare il login
+     * di un'utente o un'aggiornamento della lista dei progetti di cui l'utente è membro
      */
     public void notifyEvent(Notification notification) throws RemoteException {
         this.users = notification.users;
@@ -89,23 +89,30 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
     }
 
     public Response register(String username, String password) throws IOException, UserNotFoundException, ClassNotFoundException {
+
+        if(logged) {
+            return new Response(false, "Sei già loggato");
+        }
+
         Response response = server.register(username, password);
-        login(username, password);
+        if(response.success)
+            login(username, password);
         return response;
     }
 
-    public void login(String username, String password) throws IOException, UserNotFoundException, ClassNotFoundException {
+    public Response login(String username, String password) throws IOException, UserNotFoundException, ClassNotFoundException {
         this.username = username;
         this.password = password;
         server.registerForCallback(this, username);
         sendCommand(String.format("login %s %s", username, password));
         Response response = getResponse();
         if (response.success) {
-            System.out.println("Login avvenuto con successo");
             logged = true;
-        } else
-            System.out.println(response.message);
+        } else {
             server.unregisterForCallback(username);
+        }
+
+        return response;
     }
 
     public void close() {
@@ -174,8 +181,10 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
                 break;
 
             case "login":
-                login(splittedCommand[1], splittedCommand[2]);
+                response = login(splittedCommand[1], splittedCommand[2]);
+                System.out.printf("< %s\n", response.message);
                 break;
+
             case "listprojects":
             case "showmembers":
             case "showcards":
@@ -183,7 +192,7 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
             case "getcardhistory":
                 sendCommand(command);
                 response = getResponse();
-                System.out.printf("Risposta server: \n\n%s\n", response.message);
+                System.out.printf("< %s\n", response.message);
                 if (response.success)
                     for (String text : response.list)
                         System.out.println(text);
@@ -202,6 +211,11 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
                 sendCommand(command);
                 break;
 
+            case "register":
+                response = register(splittedCommand[1], splittedCommand[2]);
+                System.out.printf("< %s\n", response.message);
+                break;
+
             default:
                 sendCommand(command);
                 response = getResponse();
@@ -217,7 +231,7 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
 
             System.out.println("Client: connesso");
             System.out.println("Digita '" + this.EXIT_CMD + "' per uscire");
-            System.out.println("Digita help per vedere la lista dei comandi disponibili");
+            System.out.println("Digita 'help' per vedere la lista dei comandi disponibili");
 
             while (!this.exit) {
                 System.out.print("> ");
@@ -229,6 +243,8 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
                     System.out.println("Missing arguments");
                 } catch (UserNotFoundException e) {
                     System.out.println(e.getMessage());
+                } catch (ConnectException e) {
+                    System.out.println("Server irraggiungibile, digita '" + this.EXIT_CMD + "' per uscire");
                 }
             }
             System.out.println("Client: chiusura");
@@ -244,7 +260,7 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
         System.out.println("**************** Comandi *******************");
         System.out.println("register [username] [password]      Registra nuovo utente");
         System.out.println("login [username] [password]         Effettua login");
-        System.out.printf("%s                                  Disconnetiti\n", this.EXIT_CMD);
+        System.out.printf("%s                                 Effettua logout\n", this.EXIT_CMD);
         System.out.println("listusers                           Mostra lista utenti registrati");
         System.out.println("listonlineusers                     Mostra utenti attualmente online");
         System.out.println("createproject [project name]        Crea un nuovo progetto");

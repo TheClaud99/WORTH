@@ -28,7 +28,12 @@ public class Projects {
         throw new ProjectNotFoundException();
     }
 
-    public void addProject(String name) throws IOException {
+    public void addProject(String name) throws IOException, IllegalArgumentException {
+        for (Project project : projects) {
+            if(project.getName().equals(name)) {
+                throw new IllegalArgumentException("Esiste già un progetto con quel nome");
+            }
+        }
         projects.add(new Project(name));
         storage.updateProjects(projects);
     }

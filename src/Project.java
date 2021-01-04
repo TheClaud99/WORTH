@@ -37,7 +37,7 @@ public class Project {
     //Aggiunge un Nuovo membro al progetto. Se gia presente lancia una eccezione
     public void addMember(String user) {
         if (this.members.contains(user))
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Utente già presente");
         members.add(user);
     }
 
@@ -56,7 +56,7 @@ public class Project {
     //Crea una nuova Card e la inserisce, se il nome non è gia usato da un'altra Card
     public void addCard(Card card) {
         for (Card c : cards) {
-            if (c.getName().equals(card.getName())) throw new IllegalArgumentException();
+            if (c.getName().equals(card.getName())) throw new IllegalArgumentException("Nome card già esistente");
         }
 
         cards.add(card);
