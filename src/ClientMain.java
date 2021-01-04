@@ -192,6 +192,11 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
             case "":
                 break;
 
+            case "help":
+                help();
+                break;
+
+
             case EXIT_CMD:
                 this.exit = true;
                 sendCommand(command);
@@ -200,7 +205,7 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
             default:
                 sendCommand(command);
                 response = getResponse();
-                System.out.printf("Risposta server: %s\n", response.message);
+                System.out.printf("< %s\n", response.message);
                 break;
         }
     }
@@ -211,10 +216,11 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
             BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
 
             System.out.println("Client: connesso");
-            System.out.println("Digita 'exit' per uscire, i messaggi scritti saranno inviati al server:");
+            System.out.println("Digita '" + this.EXIT_CMD + "' per uscire");
+            System.out.println("Digita help per vedere la lista dei comandi disponibili");
 
             while (!this.exit) {
-
+                System.out.print("> ");
                 String msg = consoleReader.readLine().trim();
 
                 try {
@@ -232,6 +238,27 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
         } finally {
             client.close();
         }
+    }
+
+    private void help() {
+        System.out.println("**************** Comandi *******************");
+        System.out.println("register [username] [password]      Registra nuovo utente");
+        System.out.println("login [username] [password]         Effettua login");
+        System.out.printf("%s                                  Disconnetiti\n", this.EXIT_CMD);
+        System.out.println("listusers                           Mostra lista utenti registrati");
+        System.out.println("listonlineusers                     Mostra utenti attualmente online");
+        System.out.println("createproject [project name]        Crea un nuovo progetto");
+        System.out.println("listprojects                        Mostra lista progetti di cui fai parte");
+        System.out.println("addmember [project name] [username] Aggiungi nuovo utente al progetto");
+        System.out.println("showmembers [project name]          Mostra membri di un progetto");
+        System.out.println("showcards [project name]            Mostra card di un progetto");
+        System.out.println("showcard [project name] [card name] Mostra info di una card");
+        System.out.println("addcard [project name] [card name] [card description] Aggiungi una card al progetto");
+        System.out.println("movecard [project name] [card name] [old state] [new state] Sposta una card da uno stato ad un altro");
+        System.out.println("getcardhistory [project name] [card name] Mostra la cronologia degli spostamenti di una card");
+        System.out.println("readchat [project name]             Leggi messaggi nella chat di un progetto");
+        System.out.println("sendchatmsg [project name] \"[message]\" Manda un messaggio nella chat di un progetto (Il messaggio deve essere racchiuso tra \")");
+        System.out.println("cancelproject [project name]        Cancella un progetto (tutte le card devono essere done)");
     }
 
     public static void main(String[] args) throws RemoteException {
