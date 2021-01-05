@@ -29,7 +29,7 @@ public class StorageManager {
     public ArrayList<User> restoreUsers() throws IOException {
         File file = new File(usersFilePath);
         if (file.createNewFile()) {
-            mapper.writeValue(file, User[].class);
+            mapper.writeValue(file, new ArrayList<User>());
         }
 
         return new ArrayList<>(Arrays.asList(mapper.readValue(file, User[].class)));
