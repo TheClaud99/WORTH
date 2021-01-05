@@ -218,7 +218,8 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                     if (!project.isMember(users.getUsernameByKey(key))) {
                         key.attach(new Response(false, "Non sei membro del progetto"));
                     } else {
-                        project.addMember(splittedCommand[2]);
+                        User newUser = users.getByUsername(splittedCommand[2]);
+                        project.addMember(newUser.getUsername());
                         projects.updateProjects();
                         key.attach(new Response(true, "Aggiunto utente " + splittedCommand[2] + " a progetto " + splittedCommand[1]));
                         notifyUsers();
