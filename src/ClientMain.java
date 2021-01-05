@@ -79,7 +79,7 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
      * metodo che può essere richiamato dal servente per notificare il login
      * di un'utente o un'aggiornamento della lista dei progetti di cui l'utente è membro
      */
-    public void notifyEvent(Notification notification) throws RemoteException {
+    public synchronized void notifyEvent(Notification notification) throws RemoteException {
         this.users = notification.users;
         try {
             updateChats(notification.porjectChatIps);
@@ -141,6 +141,39 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
         return response;
     }
 
+    private synchronized void listUsers() {
+        for (Map.Entry<String, Boolean> user : users.entrySet())
+            if (user.getValue())
+                System.out.println(user.getKey() + ": Online");
+            else
+                System.out.println(user.getKey() + ": Offline");
+    }
+
+    private synchronized void listOnlineUsers() {
+        for (Map.Entry<String, Boolean> user : users.entrySet())
+            if (user.getValue())
+                System.out.println(user.getKey());
+    }
+
+    private synchronized void readChat(String chat) {
+        if(!chatList.containsKey(chat)) {
+            System.out.println("Chat non trovata");
+            return;
+        }
+        for (String text : chatList.get(chat).readMessages())
+            System.out.println(text);
+    }
+
+    private synchronized void sendChatMsg(String chat, String message) throws IOException {
+        if(!chatList.containsKey(chat)) {
+            System.out.println("Chat non trovata");
+            return;
+        }
+
+        chatList.get(chat).sendMsg(this.username + ": " + message);
+        System.out.println("message sent");
+    }
+
     private void executeCommand(String command) throws IOException, ClassNotFoundException, UserNotFoundException, ArrayIndexOutOfBoundsException {
         String[] splittedCommand = command.split(" ");
         Response response;
@@ -148,36 +181,20 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
         switch (splittedCommand[0].toLowerCase()) {
 
             case "listusers":
-                for (Map.Entry<String, Boolean> user : users.entrySet())
-                    if (user.getValue())
-                        System.out.println(user.getKey() + ": Online");
-                    else
-                        System.out.println(user.getKey() + ": Offline");
+                listUsers();
                 break;
 
             case "listonlineusers":
-                for (Map.Entry<String, Boolean> user : users.entrySet())
-                    if (user.getValue())
-                        System.out.println(user.getKey());
+                listOnlineUsers();
                 break;
 
             case "readchat":
-                if(!chatList.containsKey(splittedCommand[1])) {
-                    System.out.println("Chat non trovata");
-                    break;
-                }
-                for (String text : chatList.get(splittedCommand[1]).readMessages())
-                    System.out.println(text);
+                readChat(splittedCommand[1]);
                 break;
 
             case "sendchatmsg":
-                if(!chatList.containsKey(splittedCommand[1])) {
-                    System.out.println("Chat non trovata");
-                    break;
-                }
                 String message = command.split("\"")[1];
-                chatList.get(splittedCommand[1]).sendMsg(this.username + ": " + message);
-                System.out.println("message sent");
+                sendChatMsg(splittedCommand[1], message);
                 break;
 
             case "login":
