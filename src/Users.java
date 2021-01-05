@@ -28,7 +28,7 @@ public class Users {
         this.userKeys = new HashMap<>();
     }
 
-    public User getByUsername(String username) throws UserNotFoundException {
+    public synchronized User getByUsername(String username) throws UserNotFoundException {
         for (User user : users) {
             if (user.getUsername().equals(username)) {
                 return user;
@@ -38,7 +38,7 @@ public class Users {
         throw new UserNotFoundException("Utente '" + username + "' non trovato");
     }
 
-    public boolean register(String username, String password) throws IOException {
+    public synchronized boolean register(String username, String password) throws IOException {
         for (User user : users) {
             System.out.println(user.getUsername());
             if (user.getUsername().equals(username)) {
