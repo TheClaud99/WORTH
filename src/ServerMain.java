@@ -54,7 +54,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
     private static final int CHAT_PORT = 2000;
 
-    /* crea un nuovo servente */
+    /* crea un nuovo server */
     public ServerMain() throws IOException {
         super();
         mapper = new ObjectMapper();
@@ -154,6 +154,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                     command = this.readClientMessage(key);
                     executeCommand(command, key);
                 } catch (IOException e) {
+                    System.out.println("Disconnessione utente");
                     cancelKey(key);
                     continue;
                 } catch (ArrayIndexOutOfBoundsException e) {
