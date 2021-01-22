@@ -1,7 +1,8 @@
 package Utils;
 
-import sun.misc.BASE64Decoder;
-import sun.misc.BASE64Encoder;
+import java.util.Base64;
+import java.util.Base64.Decoder;
+import java.util.Base64.Encoder;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -57,13 +58,13 @@ public class Utils {
     }
 
     public static byte[] base64ToByte(String str) throws IOException {
-        BASE64Decoder decoder = new BASE64Decoder();
-        return decoder.decodeBuffer(str);
+        Decoder decoder = Base64.getDecoder();
+        return decoder.decode(str);
     }
 
     public static String byteToBase64(byte[] bt) {
-        BASE64Encoder endecoder = new BASE64Encoder();
-        return endecoder.encode(bt);
+        Encoder endecoder = Base64.getEncoder();
+        return new String(endecoder.encode(bt), StandardCharsets.ISO_8859_1);
     }
 
     public static String sha512(String message, String saltKey) {
