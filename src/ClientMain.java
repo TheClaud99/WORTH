@@ -33,11 +33,11 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
     private final Map<String, ChatThread> chatList;
     private Map<String, Boolean> users;
 
-    private static final String ServerAddress = "127.0.0.1";
+    private static String ServerAddress = "127.0.0.1";
     private final int BUFFER_DIMENSION = 1024;
-    private static final int RMIport = 5000; //RMI port
-    private static final int TCPport = 1919; //TCP port for connection
-    private static final int CHAT_PORT = 2000; //Chat UDP port
+    private static int RMIport = 5000; //RMI port
+    private static int TCPport = 1919; //TCP port for connection
+    private static int CHAT_PORT = 2000; //Chat UDP port
     private final String EXIT_CMD = "exit";
     private SocketChannel client;
 
@@ -68,7 +68,7 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
         Iterator<Entry<String, ChatThread>> iterator = chatList.entrySet().iterator();
         while (iterator.hasNext()) {
             Entry<String, ChatThread> chat = iterator.next();
-            if(!porjectChatIps.containsKey(chat.getKey())) {
+            if (!porjectChatIps.containsKey(chat.getKey())) {
                 chat.getValue().interrupt();
                 iterator.remove();
             }
@@ -90,12 +90,12 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
 
     public Response register(String username, String password) throws IOException, UserNotFoundException, ClassNotFoundException {
 
-        if(logged) {
+        if (logged) {
             return new Response(false, "Sei già loggato");
         }
 
         Response response = server.register(username, password);
-        if(response.success)
+        if (response.success)
             login(username, password);
         return response;
     }
@@ -156,7 +156,7 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
     }
 
     private synchronized void readChat(String chat) {
-        if(!chatList.containsKey(chat)) {
+        if (!chatList.containsKey(chat)) {
             System.out.println("Chat non trovata");
             return;
         }
@@ -165,7 +165,7 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
     }
 
     private synchronized void sendChatMsg(String chat, String message) throws IOException {
-        if(!chatList.containsKey(chat)) {
+        if (!chatList.containsKey(chat)) {
             System.out.println("Chat non trovata");
             return;
         }
@@ -296,14 +296,40 @@ public class ClientMain extends UnicastRemoteObject implements NotifyEventInterf
 
     public static void main(String[] args) throws RemoteException {
         ClientMain clientMain;
-        RegisterForm form;
+
+        try {
+            if (args.length == 1) {
+                ServerAddress = args[0];
+            }
+
+            if(args.length == 2) {
+                ServerAddress = args[0];
+                TCPport = Integer.parseInt(args[1]);
+            }
+
+            if(args.length == 3) {
+                ServerAddress = args[0];
+                TCPport = Integer.parseInt(args[1]);
+                RMIport = Integer.parseInt(args[2]);
+            }
+
+            if(args.length == 4) {
+                ServerAddress = args[0];
+                TCPport = Integer.parseInt(args[1]);
+                RMIport = Integer.parseInt(args[2]);
+                CHAT_PORT = Integer.parseInt(args[3]);
+            }
+
+        } catch (RuntimeException ex) {
+            ex.printStackTrace();
+        }
+
+
         try {
             Registry registry = LocateRegistry.getRegistry(RMIport);
             String name = "Server";
             ServerInterface server = (ServerInterface) registry.lookup(name);
             clientMain = new ClientMain(server);
-            // form = new RegisterForm(clientMain);
-            // form.setVisible(true);
             clientMain.start();
         } catch (Exception e) {
             e.printStackTrace();

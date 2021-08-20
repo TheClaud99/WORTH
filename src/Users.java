@@ -51,6 +51,16 @@ public class Users {
         return true;
     }
 
+    public synchronized void notifyAll(Projects projects) {
+        for (User user : users) {
+            try {
+                user.notify(new Notification(getUsersList(), projects.getChatList(user.getUsername())));
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     public boolean login(String username, String password, SelectionKey userKey) throws UserNotFoundException, UserAlreadyLoggedException, MultipleLoginsException {
         User user = getByUsername(username);
         if(userKeys.containsKey(userKey)) throw new UserAlreadyLoggedException();
@@ -66,12 +76,6 @@ public class Users {
     public void setClient(String username, NotifyEventInterface clientInterface) throws UserNotFoundException {
         User user = getByUsername(username);
         user.setClient(clientInterface);
-    }
-
-    public void notifyAll(Notification notification) throws RemoteException {
-        for(User user : users) {
-            user.notify(notification);
-        }
     }
 
     public boolean isLogged(SelectionKey userKey) {

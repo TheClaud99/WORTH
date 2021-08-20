@@ -38,8 +38,8 @@ public class ServerMain extends RemoteObject implements ServerInterface {
     /**
      * porta su cui aprire il listening socket
      */
-    private static final int RMIport = 5000; //RMI port
-    private static final int TCPport = 1919; //TCP port for connection
+    private static int RMIport = 5000; //RMI port
+    private static int TCPport = 1919; //TCP port for connection
 
     /**
      * Storage informations
@@ -52,7 +52,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
 
     private final StorageManager storage;
 
-    private static final int CHAT_PORT = 2000;
+    private static int CHAT_PORT = 2000;
 
     /* crea un nuovo server */
     public ServerMain() throws IOException {
@@ -74,13 +74,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
     }
 
     public void notifyUsers() {
-        for (User user : users.getUsers()) {
-            try {
-                user.notify(new Notification(users.getUsersList(), projects.getChatList(user.getUsername())));
-            } catch (RemoteException e) {
-                e.printStackTrace();
-            }
-        }
+        users.notifyAll(projects);
     }
 
     @Override
@@ -172,7 +166,7 @@ public class ServerMain extends RemoteObject implements ServerInterface {
                     key.attach(new Response(false, "Spostamento non consentito"));
                 }
 
-                if(!command.equals(EXIT_CMD)) key.interestOps(SelectionKey.OP_WRITE);
+                if (!command.equals(EXIT_CMD)) key.interestOps(SelectionKey.OP_WRITE);
             } else if (key.isWritable()) { // WRITABLE
                 this.answerClient(sel, key);
             }
@@ -373,10 +367,19 @@ public class ServerMain extends RemoteObject implements ServerInterface {
         SocketChannel c_channel = (SocketChannel) key.channel();
         // recupera l'array di bytebuffer (attachment)
         ByteBuffer bfs = (ByteBuffer) key.attachment();
-        c_channel.read(bfs);
+        List<Byte> byteList = new LinkedList<>();
+        byte[] byteArray = new ;
 
+        while (c_channel.read(bfs) != -1) {
+            bfs.flip();
+            while(bfs.hasRemaining()) {
+                byte b=bfs.get();
+                byteList.add(b);
+            }
+        }
+        ;
         bfs.flip();
-        return new String(bfs.array()).trim();
+        return new String(byteList.toArray(new Byte[0])).trim();
     }
 
     /**
@@ -399,6 +402,28 @@ public class ServerMain extends RemoteObject implements ServerInterface {
     }
 
     public static void main(String[] args) {
+
+        try {
+            if (args.length == 1) {
+                TCPport = Integer.parseInt(args[0]);
+            }
+
+            if (args.length == 2) {
+                TCPport = Integer.parseInt(args[0]);
+                RMIport = Integer.parseInt(args[1]);
+            }
+
+            if (args.length == 3) {
+                TCPport = Integer.parseInt(args[0]);
+                RMIport = Integer.parseInt(args[1]);
+                CHAT_PORT = Integer.parseInt(args[2]);
+            }
+
+        } catch (RuntimeException ex) {
+            ex.printStackTrace();
+        }
+
+
         try {
             ServerMain serverMain = new ServerMain();
             ServerInterface stub = (ServerInterface) UnicastRemoteObject.exportObject(serverMain, 39000);
