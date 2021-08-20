@@ -367,19 +367,9 @@ public class ServerMain extends RemoteObject implements ServerInterface {
         SocketChannel c_channel = (SocketChannel) key.channel();
         // recupera l'array di bytebuffer (attachment)
         ByteBuffer bfs = (ByteBuffer) key.attachment();
-        List<Byte> byteList = new LinkedList<>();
-        byte[] byteArray = new ;
-
-        while (c_channel.read(bfs) != -1) {
-            bfs.flip();
-            while(bfs.hasRemaining()) {
-                byte b=bfs.get();
-                byteList.add(b);
-            }
-        }
-        ;
+        c_channel.read(bfs);
         bfs.flip();
-        return new String(byteList.toArray(new Byte[0])).trim();
+        return new String(bfs.array()).trim();
     }
 
     /**

@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.List;
 
 public class Utils {
 
@@ -66,6 +67,13 @@ public class Utils {
         Encoder endecoder = Base64.getEncoder();
         return new String(endecoder.encode(bt), StandardCharsets.ISO_8859_1);
     }
+
+    public static byte[] toByteArray(List<Byte> list){
+        byte[] ret = new byte[list.size()];
+        for(int i = 0; i < list.size(); i++)
+          ret[i] = list.get(i);
+        return ret;
+      }
 
     public static String sha512(String message, String saltKey) {
         MessageDigest digest = null;
